@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/frontend/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,11 +13,17 @@
 
 # testing
 /coverage
+/frontend/coverage
 
 # next.js
 /.next/
 /.vinext/
+/.vite/
 /out/
+/frontend/.next/
+/frontend/.vinext/
+/frontend/.vite/
+/frontend/out/
 
 # misc
 .DS_Store
@@ -37,7 +44,9 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 /dist/
+/frontend/dist/
 /.wrangler/
 /outputs/
 /work/
 /.cache/
+/frontend/.cache/
