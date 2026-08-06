@@ -7,6 +7,7 @@ type View = "home" | "work" | "messages" | "knowledge";
 type TruckFilter = "ทั้งหมด" | "ออนไลน์" | "รองาน" | "วิ่งงาน" | "ออฟไลน์";
 type DeliveryFilter = "ทั้งหมด" | "รอมอบหมาย" | "กำลังขนส่ง" | "เสร็จสิ้น" | "ขอยกเลิก";
 type DriverJobFilter = "ทั้งหมด" | "รอกดรับงาน" | "กำลังดำเนินการ" | "เสร็จสิ้น" | "ปฏิเสธ";
+type DriverJobStatus = Exclude<DriverJobFilter, "ทั้งหมด">;
 type SalesOrderFilter = "ทั้งหมด" | "รออนุมัติ" | "อนุมัติแล้ว" | "ปฏิเสธ";
 type SalesOrderStatus = Exclude<SalesOrderFilter, "ทั้งหมด">;
 type Notice = { message: string; tone: "success" | "danger" };
@@ -30,20 +31,20 @@ const menuLabels: Record<Role, string> = {
 };
 
 const deliveryRequests = [
-  { id: "M1", status: "รอมอบหมาย", tone: "yellow" },
-  { id: "M2", status: "รอมอบหมาย", tone: "yellow" },
-  { id: "M3", status: "กำลังขนส่ง", tone: "blue" },
-  { id: "M4", status: "กำลังขนส่ง", tone: "blue" },
-  { id: "M5", status: "เสร็จสิ้น", tone: "green" },
-  { id: "M6", status: "ขอยกเลิก", tone: "red" },
+  { id: "M1", status: "รอมอบหมาย", tone: "yellow", material: "ขวดพลาสติก", weight: "800 กก.", customer: "บริษัท อีโคแพ็ค จำกัด", pickup: "วันนี้ 09:30", vehicle: null },
+  { id: "M2", status: "รอมอบหมาย", tone: "yellow", material: "กระดาษลัง", weight: "650 กก.", customer: "บริษัท กรีนโลก จำกัด", pickup: "วันนี้ 11:00", vehicle: null },
+  { id: "M3", status: "กำลังขนส่ง", tone: "blue", material: "กระดาษขาว-ดำ", weight: "1,200 กก.", customer: "บริษัท สมบูรณ์ จำกัด", pickup: "วันนี้ 08:15", vehicle: "C02" },
+  { id: "M4", status: "กำลังขนส่ง", tone: "blue", material: "แก้ว", weight: "900 กก.", customer: "บริษัท แก้วดี จำกัด", pickup: "วันนี้ 10:30", vehicle: "C05" },
+  { id: "M5", status: "เสร็จสิ้น", tone: "green", material: "กระป๋องอะลูมิเนียม", weight: "500 กก.", customer: "ร้านรีไซเคิลรุ่งเรือง", pickup: "เมื่อวาน 15:40", vehicle: "C08" },
+  { id: "M6", status: "ขอยกเลิก", tone: "red", material: "ขวดแก้ว", weight: "700 กก.", customer: "หจก. ทรัพย์รีไซเคิล", pickup: "วันนี้ 13:30", vehicle: "C19" },
 ];
 
 const trucks = [
   { id: "C01", status: "ออนไลน์", job: "-", tone: "green", plate: "กจ 881", driver: "นายสมยศ สีจันทร์", capacity: "1,200 กก.", phone: "0845214565" },
-  { id: "C02", status: "วิ่งงาน", job: "M1", tone: "blue", plate: "บน 342", driver: "นายพิเชษฐ์ คำดี", capacity: "1,500 กก.", phone: "0812345612" },
+  { id: "C02", status: "วิ่งงาน", job: "M3", tone: "blue", plate: "บน 342", driver: "นายพิเชษฐ์ คำดี", capacity: "1,500 กก.", phone: "0812345612" },
   { id: "C03", status: "รองาน", job: "-", tone: "yellow", plate: "บน 214", driver: "นายยงยุทธ พลนันท์", capacity: "1,000 กก.", phone: "0892145630" },
   { id: "C04", status: "รองาน", job: "-", tone: "yellow", plate: "กท 476", driver: "นายธนกร ใจมั่น", capacity: "1,200 กก.", phone: "0864762104" },
-  { id: "C05", status: "วิ่งงาน", job: "M2", tone: "blue", plate: "บม 905", driver: "นายชาญชัย มีสุข", capacity: "1,800 กก.", phone: "0829054315" },
+  { id: "C05", status: "วิ่งงาน", job: "M4", tone: "blue", plate: "บม 905", driver: "นายชาญชัย มีสุข", capacity: "1,800 กก.", phone: "0829054315" },
   { id: "C06", status: "ออฟไลน์", job: "-", tone: "gray", plate: "กย 126", driver: "นายศุภชัย นาคดี", capacity: "1,000 กก.", phone: "0851269046" },
   { id: "C07", status: "ออฟไลน์", job: "-", tone: "gray", plate: "บน 731", driver: "นายประสิทธิ์ แก้วงาม", capacity: "1,300 กก.", phone: "0837315207" },
   { id: "C08", status: "ออนไลน์", job: "-", tone: "green", plate: "กท 512", driver: "นายสมชาย แสงดี", capacity: "1,500 กก.", phone: "0885124308" },
@@ -57,7 +58,7 @@ const trucks = [
   { id: "C16", status: "รองาน", job: "-", tone: "yellow", plate: "กน 602", driver: "นายสุรชัย แสนงาม", capacity: "1,800 กก.", phone: "0886024516" },
   { id: "C17", status: "รองาน", job: "-", tone: "yellow", plate: "บก 819", driver: "นายมนตรี วงศ์ดี", capacity: "1,300 กก.", phone: "0818197317" },
   { id: "C18", status: "รองาน", job: "-", tone: "yellow", plate: "กษ 443", driver: "นายเอกชัย บุญมี", capacity: "1,000 กก.", phone: "0874436218" },
-  { id: "C19", status: "วิ่งงาน", job: "M3", tone: "blue", plate: "บล 570", driver: "นายวรพล คงมั่น", capacity: "1,500 กก.", phone: "0835708419" },
+  { id: "C19", status: "วิ่งงาน", job: "M6", tone: "blue", plate: "บล 570", driver: "นายวรพล คงมั่น", capacity: "1,500 กก.", phone: "0835708419" },
   { id: "C20", status: "ออฟไลน์", job: "-", tone: "gray", plate: "กอ 991", driver: "นายพิชัย ธรรมดี", capacity: "1,200 กก.", phone: "0849913520" },
 ];
 
@@ -86,12 +87,20 @@ export function RecycleHub() {
   const [approvedOrders, setApprovedOrders] = useState<string[]>([]);
   const [rejectedOrders, setRejectedOrders] = useState<string[]>([]);
   const [acceptedJobs, setAcceptedJobs] = useState<string[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<string[]>([]);
 
   const orderStatusFor = (id: string): SalesOrderStatus => {
     if (rejectedOrders.includes(id)) return "ปฏิเสธ";
     if (approvedOrders.includes(id)) return "อนุมัติแล้ว";
     const initialStatus = purchaseOrders.find((order) => order.id === id)?.status;
     return initialStatus === "อนุมัติแล้ว" || initialStatus === "ปฏิเสธ" ? initialStatus : "รออนุมัติ";
+  };
+
+  const driverJobStatusFor = (id: string): DriverJobStatus => {
+    if (completedJobs.includes(id)) return "เสร็จสิ้น";
+    if (acceptedJobs.includes(id)) return "กำลังดำเนินการ";
+    const initialStatus = driverJobs.find((job) => job.id === id)?.status;
+    return initialStatus === "กำลังดำเนินการ" || initialStatus === "เสร็จสิ้น" || initialStatus === "ปฏิเสธ" ? initialStatus : "รอกดรับงาน";
   };
 
   const login = (event: FormEvent) => {
@@ -135,7 +144,7 @@ export function RecycleHub() {
           <SalesDashboard approvedOrders={approvedOrders} rejectedOrders={rejectedOrders} onOrder={(id) => setModal({ type: "order", id })} />
         )}
         {view === "work" && role === "driver" && (
-          <DriverDashboard acceptedJobs={acceptedJobs} onJob={(id) => setModal({ type: "driver-job", id })} />
+          <DriverDashboard acceptedJobs={acceptedJobs} completedJobs={completedJobs} onJob={(id) => setModal({ type: "driver-job", id })} />
         )}
       </main>
 
@@ -174,14 +183,18 @@ export function RecycleHub() {
       {modal?.type === "driver-job" && (
         <DriverJobModal
           id={modal.id}
-          accepted={acceptedJobs.includes(modal.id)}
+          status={driverJobStatusFor(modal.id)}
           onClose={() => setModal(null)}
           onAccept={() => {
             setAcceptedJobs((current) => [...current, modal.id]);
             showNotice("รับงานแล้ว");
           }}
           onCancel={() => showNotice("ส่งคำขอยกเลิกแล้ว", "danger")}
-          onComplete={() => showNotice("ส่งสำเร็จ")}
+          onComplete={() => {
+            setAcceptedJobs((current) => current.filter((id) => id !== modal.id));
+            setCompletedJobs((current) => current.includes(modal.id) ? current : [...current, modal.id]);
+            showNotice("ส่งสำเร็จ");
+          }}
         />
       )}
       {notice && <div className={`prototype-notice ${notice.tone}`} role="status">{notice.message}</div>}
@@ -266,7 +279,7 @@ function SupervisorDashboard({ onRequest, onTruck }: { onRequest: (id: string) =
     <section className="dashboard-space" aria-label="คำขอรับ-ส่งวัสดุ">
       <DashboardIntro eyebrow="TRANSPORT OVERVIEW" title="ภาพรวมการขนส่ง" description="ติดตามคำขอ สถานะรถ และงานขนส่งทั้งหมดจากจุดเดียว" />
       <div className="summary-grid three">
-        <SummaryCard title="คำขอจัดส่ง" value="5" note="รายการ" color="light-green" icon="/icons/Listgreen.png" />
+        <SummaryCard title="คำขอจัดส่ง" value={String(deliveryRequests.length)} note="รายการ" color="light-green" icon="/icons/listgreen.png" />
         <SummaryCard title="รถที่พร้อมรับงาน" value={String(readyTruckCount)} note="คัน" color="light-blue" icon="/icons/carblue.png" />
         <SummaryCard title="กำลังดำเนินการขนส่ง" value={String(runningTruckCount)} note="คัน" color="light-yellow" icon="/icons/clockyellow.png" />
       </div>
@@ -311,22 +324,34 @@ function SupervisorDashboard({ onRequest, onTruck }: { onRequest: (id: string) =
         <section className="outline-panel request-panel">
           <div className="panel-title-row">
             <h2>คำขอจัดส่ง</h2>
-            <select
-              className="request-filter"
-              aria-label="กรองคำขอจัดส่งตามสถานะ"
-              value={requestFilter}
-              onChange={(event) => setRequestFilter(event.target.value as DeliveryFilter)}
-            >
-              <option value="ทั้งหมด">ทั้งหมด</option>
-              <option value="รอมอบหมาย">รอมอบหมาย</option>
-              <option value="กำลังขนส่ง">กำลังขนส่ง</option>
-              <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-              <option value="ขอยกเลิก">ขอยกเลิก</option>
-            </select>
+            <div className="request-panel-actions">
+              <span>{visibleRequests.length} รายการ</span>
+              <select
+                className="request-filter"
+                aria-label="กรองคำขอจัดส่งตามสถานะ"
+                value={requestFilter}
+                onChange={(event) => setRequestFilter(event.target.value as DeliveryFilter)}
+              >
+                <option value="ทั้งหมด">ทั้งหมด</option>
+                <option value="รอมอบหมาย">รอมอบหมาย</option>
+                <option value="กำลังขนส่ง">กำลังขนส่ง</option>
+                <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                <option value="ขอยกเลิก">ขอยกเลิก</option>
+              </select>
+            </div>
           </div>
           {visibleRequests.map((request) => (
             <button className="request-row" key={request.id} onClick={() => onRequest(request.id)}>
-              <strong>{request.id}</strong><span className={`state-pill ${request.tone}`}>{request.status}</span>
+              <span className="request-row-content">
+                <span className="request-row-heading"><strong>{request.id}</strong><span className={`state-pill ${request.tone}`}>{request.status}</span></span>
+                <span className="request-material">{request.material}<b>•</b>{request.weight}</span>
+                <small>{request.customer}</small>
+              </span>
+              <span className="request-row-meta">
+                <small>{request.pickup}</small>
+                <b>{request.vehicle ? `รถ ${request.vehicle}` : "ยังไม่เลือกรถ"}</b>
+                <em>ดูรายละเอียด <span>→</span></em>
+              </span>
             </button>
           ))}
           {visibleRequests.length === 0 && <p className="empty-request-list">ไม่พบคำขอในสถานะนี้</p>}
@@ -357,7 +382,7 @@ function SalesDashboard({ approvedOrders, rejectedOrders, onOrder }: { approvedO
         <SummaryCard title="ทั้งหมด" value="16" note="รายการ" color="orange" icon="/icons/listyellow.png" />
         <SummaryCard title="รออนุมัติ" value={String(Math.max(0, 5 - approvedOrders.length - rejectedOrders.length))} note="รายการ" color="light-blue" icon="/icons/clockblue.png" />
         <SummaryCard title="อนุมัติแล้ว" value={String(8 + approvedOrders.length)} note="รายการ" color="light-green" icon="/icons/truegreen.png" />
-        <SummaryCard title="ปฏิเสธ" value={String(3 + rejectedOrders.length)} note="รายการ" color="pink" icon="/icons/falsered.png" />
+        <SummaryCard title="ปฏิเสธ" value={String(3 + rejectedOrders.length)} note="รายการ" color="pink" icon="/icons/false.png" />
       </div>
       <section className="green-board">
         <div className="board-title">
@@ -380,13 +405,15 @@ function SalesDashboard({ approvedOrders, rejectedOrders, onOrder }: { approvedO
   );
 }
 
-function DriverDashboard({ acceptedJobs, onJob }: { acceptedJobs: string[]; onJob: (id: string) => void }) {
-  const accepted = acceptedJobs.length;
+function DriverDashboard({ acceptedJobs, completedJobs, onJob }: { acceptedJobs: string[]; completedJobs: string[]; onJob: (id: string) => void }) {
   const [jobFilter, setJobFilter] = useState<DriverJobFilter>("ทั้งหมด");
   const jobsWithStatus = driverJobs.map((job) => ({
     ...job,
-    currentStatus: acceptedJobs.includes(job.id) ? "กำลังดำเนินการ" : job.status,
+    currentStatus: completedJobs.includes(job.id) ? "เสร็จสิ้น" : acceptedJobs.includes(job.id) ? "กำลังดำเนินการ" : job.status,
   }));
+  const pendingCount = jobsWithStatus.filter((job) => job.currentStatus === "รอกดรับงาน").length;
+  const completedCount = jobsWithStatus.filter((job) => job.currentStatus === "เสร็จสิ้น").length;
+  const rejectedCount = jobsWithStatus.filter((job) => job.currentStatus === "ปฏิเสธ").length;
   const visibleJobs = jobFilter === "ทั้งหมด"
     ? jobsWithStatus
     : jobsWithStatus.filter((job) => job.currentStatus === jobFilter);
@@ -396,9 +423,9 @@ function DriverDashboard({ acceptedJobs, onJob }: { acceptedJobs: string[]; onJo
       <DashboardIntro eyebrow="MY DELIVERY TASKS" title="งานขนส่งของคุณ" description="ดูงานที่ได้รับมอบหมาย รับงาน และรายงานผลการจัดส่ง" />
       <div className="summary-grid four">
         <SummaryCard title="ทั้งหมด" value="2" note="รายการ" color="orange" icon="/icons/listyellow.png" />
-        <SummaryCard title="รอกดรับงาน" value={String(Math.max(0, 1 - accepted))} note="รายการ" color="light-blue" icon="/icons/clockblue.png" />
-        <SummaryCard title="เสร็จสิ้น" value="1" note="รายการ" color="light-green" icon="/icons/truegreen.png" />
-        <SummaryCard title="ปฏิเสธ" value="0" note="รายการ" color="pink" icon="/icons/falsered.png" />
+        <SummaryCard title="รอกดรับงาน" value={String(pendingCount)} note="รายการ" color="light-blue" icon="/icons/clockblue.png" />
+        <SummaryCard title="เสร็จสิ้น" value={String(completedCount)} note="รายการ" color="light-green" icon="/icons/truegreen.png" />
+        <SummaryCard title="ปฏิเสธ" value={String(rejectedCount)} note="รายการ" color="pink" icon="/icons/false.png" />
       </div>
       <section className="green-board driver-board">
         <div className="board-title">
@@ -435,7 +462,7 @@ function DashboardIntro({ eyebrow, title, description }: { eyebrow: string; titl
 function HomeView({ role, onView }: { role: Role; onView: (view: View) => void }) {
   const stats = {
     supervisor: [
-      { title: "คำขอรอมอบหมาย", value: "2", note: "รายการ", icon: "/icons/Listgreen.png", tone: "mint", target: "work" as View },
+      { title: "คำขอรอมอบหมาย", value: "2", note: "รายการ", icon: "/icons/listgreen.png", tone: "mint", target: "work" as View },
       { title: "รถพร้อมรับงาน", value: "8", note: "คัน", icon: "/icons/carblue.png", tone: "blue", target: "work" as View },
       { title: "ข้อความใหม่", value: "3", note: "ข้อความ", icon: "/icons/messenger.png", tone: "yellow", target: "messages" as View },
     ],
@@ -600,7 +627,11 @@ function MessagesView({ role }: { role: Role }) {
 }
 
 function DeliveryModal({ id, selectedTruck, onTruck, onClose, onConfirm }: { id: string; selectedTruck: string | null; onTruck: (id: string | null) => void; onClose: () => void; onConfirm: () => void }) {
-  const cancelled = id === "M6";
+  const request = deliveryRequests.find((item) => item.id === id) ?? deliveryRequests[0];
+  const isPending = request.tone === "yellow";
+  const isInTransit = request.tone === "blue";
+  const isCompleted = request.tone === "green";
+  const cancelled = request.tone === "red";
   const [truckSearch, setTruckSearch] = useState("");
   const availableTrucks = trucks.filter((truck) => truck.status === "รองาน");
   const normalizedSearch = truckSearch.trim().toLowerCase();
@@ -608,10 +639,11 @@ function DeliveryModal({ id, selectedTruck, onTruck, onClose, onConfirm }: { id:
     `${truck.id} ${truck.plate} ${truck.driver}`.toLowerCase().includes(normalizedSearch),
   );
   return (
-    <ModalFrame onClose={onClose}>
-      <h2>รายละเอียดคำขอ : {id} <span className={cancelled ? "tag red" : "tag purple"}>{cancelled ? "ขอยกเลิก" : "ไปขนวัสดุ"}</span></h2>
-      <div className="request-details"><p><b>วัสดุ</b> ขวดพลาสติก, กระดาษ ขาว-ดำ</p><p><b>ชื่อ</b> นายพานิช ผลส่ง</p><p><b>ที่อยู่</b> บ้านโป่ง 337/15 จ.ร้อยเอ็ด อ.เสลภูมิ ต.ภูเงิน</p><p><b>เบอร์โทร</b> 0811551689</p>{cancelled && <><p><b>รถที่รับงาน</b> C05</p><label>เหตุผลที่ขอยกเลิก</label><div className="reason-box">ลูกค้ายกเลิกกลางคัน</div></>}</div>
-      {!cancelled && (
+    <ModalFrame onClose={onClose} className="delivery-modal">
+      <h2>รายละเอียดคำขอ : {id} <span className={`tag ${isPending ? "purple" : request.tone}`}>{request.status}</span></h2>
+      <div className="delivery-modal-content">
+      <div className="request-details"><p><b>วัสดุ</b> {request.material} ({request.weight})</p><p><b>ลูกค้า</b> {request.customer}</p><p><b>ที่อยู่</b> บ้านโป่ง 337/15 จ.ร้อยเอ็ด อ.เสลภูมิ ต.ภูเงิน</p><p><b>เวลานัดรับ</b> {request.pickup}</p><p><b>เบอร์โทร</b> 0811551689</p>{cancelled && <><p><b>รถที่รับงาน</b> {request.vehicle}</p><label>เหตุผลที่ขอยกเลิก</label><div className="reason-box">ลูกค้ายกเลิกกลางคัน</div></>}</div>
+      {isPending && (
         <section className="truck-selection-block">
           <div className="truck-picker-header">
             <div><b>เลือกรถที่พร้อมรับงาน</b><small>{availableTrucks.length} คันพร้อมรับงาน</small></div>
@@ -632,8 +664,28 @@ function DeliveryModal({ id, selectedTruck, onTruck, onClose, onConfirm }: { id:
           </div>
         </section>
       )}
+      {isInTransit && (
+        <div className="delivery-status-state in-progress">
+          <span>→</span>
+          <div>
+            <b>คำขอนี้กำลังดำเนินการขนส่ง</b>
+            <small>รายการได้รับการมอบหมายรถแล้ว จึงไม่สามารถเลือกรถหรือมอบหมายซ้ำได้</small>
+          </div>
+        </div>
+      )}
+      {isCompleted && (
+        <div className="delivery-status-state completed">
+          <span>✓</span>
+          <div>
+            <b>การขนส่งรายการนี้เสร็จสิ้นแล้ว</b>
+            <small>รายการปิดงานเรียบร้อยแล้ว จึงไม่สามารถแก้ไขหรือมอบหมายรถซ้ำได้</small>
+          </div>
+        </div>
+      )}
+      </div>
       <div className="modal-buttons">
-        <button className={cancelled ? "red-button" : selectedTruck ? "green-button" : "gray-button"} disabled={!cancelled && !selectedTruck} onClick={onConfirm}>{cancelled ? "อนุมัติคำขอยกเลิก" : "ยืนยันมอบหมาย"}</button>
+        {isPending && <button className={selectedTruck ? "green-button" : "gray-button"} disabled={!selectedTruck} onClick={onConfirm}>ยืนยันมอบหมาย</button>}
+        {cancelled && <button className="red-button" onClick={onConfirm}>อนุมัติคำขอยกเลิก</button>}
         <button className="gray-button" onClick={onClose}>ปิด</button>
       </div>
     </ModalFrame>
@@ -661,15 +713,22 @@ function OrderModal({ id, status, onClose, onCancel, onConfirm }: { id: string; 
   );
 }
 
-function DriverJobModal({ id, accepted, onClose, onAccept, onCancel, onComplete }: { id: string; accepted: boolean; onClose: () => void; onAccept: () => void; onCancel: (reason: string) => void; onComplete: () => void }) {
+function DriverJobModal({ id, status, onClose, onAccept, onCancel, onComplete }: { id: string; status: DriverJobStatus; onClose: () => void; onAccept: () => void; onCancel: (reason: string) => void; onComplete: () => void }) {
   const [requestingCancel, setRequestingCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const reasonIsValid = cancelReason.trim().length > 0;
+  const isPending = status === "รอกดรับงาน";
+  const isInProgress = status === "กำลังดำเนินการ";
+  const isCompleted = status === "เสร็จสิ้น";
+  const isRejected = status === "ปฏิเสธ";
+  const statusTagClass = isInProgress ? "blue" : isCompleted ? "green" : isRejected ? "red" : "purple";
 
   return (
     <ModalFrame onClose={onClose}>
-      <h2>รายละเอียดคำขอ : {id} <span className="tag purple">ไปขนวัสดุ</span></h2>
+      <h2>รายละเอียดคำขอ : {id} <span className={`tag ${statusTagClass}`}>{status}</span></h2>
       <div className="request-details"><p><b>วัสดุ</b> ขวดพลาสติก, กระดาษ ขาว-ดำ</p><p><b>ชื่อ</b> นายพานิช ผลส่ง</p><p><b>ที่อยู่</b> บ้านโป่ง 337/15 จ.ร้อยเอ็ด อ.เสลภูมิ ต.ภูเงิน</p><p><b>เบอร์โทร</b> 0811551689</p></div>
+      {isCompleted && <div className="delivery-status-state completed"><span>✓</span><div><b>งานขนส่งนี้เสร็จสิ้นแล้ว</b><small>รายการปิดงานเรียบร้อยแล้ว ไม่สามารถรับงานหรือขอยกเลิกซ้ำได้</small></div></div>}
+      {isRejected && <div className="order-final-state rejected"><span>×</span><div><b>งานขนส่งนี้ถูกปฏิเสธแล้ว</b><small>สถานะสิ้นสุดแล้ว ไม่สามารถรับงานหรือขอยกเลิกซ้ำได้</small></div></div>}
       {requestingCancel && (
         <div className="cancel-reason-form">
           <label htmlFor={`cancel-reason-${id}`}>เหตุผลที่ขอยกเลิก <span>*</span></label>
@@ -690,17 +749,18 @@ function DriverJobModal({ id, accepted, onClose, onAccept, onCancel, onComplete 
             <button className="gray-button" onClick={() => { setRequestingCancel(false); setCancelReason(""); }}>ย้อนกลับ</button>
             <button className="red-button" disabled={!reasonIsValid} onClick={() => onCancel(cancelReason.trim())}>ยืนยันคำขอยกเลิก</button>
           </>
-        ) : (
+        ) : isPending || isInProgress ? (
           <>
-            {accepted ? <button className="green-button" onClick={onComplete}>ยืนยันส่งสำเร็จ</button> : <button className="green-button" onClick={onAccept}>รับงาน</button>}
+            {isInProgress ? <button className="green-button" onClick={onComplete}>ยืนยันส่งสำเร็จ</button> : <button className="green-button" onClick={onAccept}>รับงาน</button>}
             <button className="red-button" onClick={() => setRequestingCancel(true)}>ขอยกเลิก</button>
           </>
-        )}
+        ) : <button className="gray-button" onClick={onClose}>ปิด</button>}
       </div>
     </ModalFrame>
   );
 }
 
-function ModalFrame({ children, onClose, compact = false }: { children: React.ReactNode; onClose: () => void; compact?: boolean }) {
-  return <div className="prototype-modal-layer" role="presentation" onMouseDown={onClose}><section className={compact ? "prototype-modal compact" : "prototype-modal"} role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button type="button" className="modal-x" aria-label="ปิดหน้าต่าง" onClick={onClose}>×</button>{children}</section></div>;
+function ModalFrame({ children, onClose, compact = false, className = "" }: { children: React.ReactNode; onClose: () => void; compact?: boolean; className?: string }) {
+  const modalClassName = ["prototype-modal", compact ? "compact" : "", className].filter(Boolean).join(" ");
+  return <div className="prototype-modal-layer" role="presentation" onMouseDown={onClose}><section className={modalClassName} role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button type="button" className="modal-x" aria-label="ปิดหน้าต่าง" onClick={onClose}>×</button>{children}</section></div>;
 }
