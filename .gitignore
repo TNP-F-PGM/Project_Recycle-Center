@@ -25,6 +25,10 @@
 /frontend/.vite/
 /frontend/out/
 
+# vite / vitest
+/frontend/dist/
+/frontend/coverage/
+
 # misc
 .DS_Store
 *.pem

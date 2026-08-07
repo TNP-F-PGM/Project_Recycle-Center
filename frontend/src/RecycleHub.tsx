@@ -1,6 +1,4 @@
-"use client";
-
-import { FormEvent, useState } from "react";
+import { useState, type FormEvent } from "react";
 
 type Role = "supervisor" | "sales" | "driver";
 type View = "home" | "work" | "messages" | "knowledge";

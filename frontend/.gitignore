@@ -1,0 +1,15 @@
+# dependencies
+node_modules
+
+# build output
+dist
+dist-ssr
+
+# testing
+coverage
+
+# editor
+*.local
+
+# logs
+npm-debug.log*
