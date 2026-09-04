@@ -1,0 +1,181 @@
+{
+  "info": {
+    "_postman_id": "1b75ac93-b01b-4174-b394-198fa1792ead",
+    "name": "T20 - Truck API",
+    "description": "ทดสอบ API รถ ตั้ง base_url, truck_id และ license_plate ใน Variables ก่อนส่งคำขอ ดูรายละเอียดใน backend/README.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "truck_id",
+      "value": "TR001",
+      "type": "string"
+    },
+    {
+      "key": "license_plate",
+      "value": "TEST-001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. ดูรายการรถ",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/trucks",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks"
+          ]
+        },
+        "description": "คาดหวัง 200 และรายการรถ หรือ [] หากยังไม่มีรถ"
+      },
+      "response": []
+    },
+    {
+      "name": "2. เพิ่มรถ",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"truck_id\": \"{{truck_id}}\",\n  \"license_plate\": \"{{license_plate}}\",\n  \"status\": \"available\",\n  \"capacity\": 2500\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/trucks",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks"
+          ]
+        },
+        "description": "เพิ่มข้อมูลลงฐานข้อมูลจริง คาดหวัง 201; หากรหัสรถหรือทะเบียนซ้ำจะได้ 409 ให้เปลี่ยน Variables ก่อนเพิ่มคันใหม่"
+      },
+      "response": []
+    },
+    {
+      "name": "3. ดูรถรายคัน",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/trucks/{{truck_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks",
+            "{{truck_id}}"
+          ]
+        },
+        "description": "คาดหวัง 200 และข้อมูลรถ หากไม่พบรหัสจะได้ 404"
+      },
+      "response": []
+    },
+    {
+      "name": "4. แก้ไขความจุรถ",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"capacity\": 3000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/trucks/{{truck_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks",
+            "{{truck_id}}"
+          ]
+        },
+        "description": "แก้ข้อมูลจริง คาดหวัง 200 และข้อมูลหลังแก้ไข; ฟิลด์ที่ไม่ส่งจะคงค่าเดิม รับ license_plate, status และ capacity"
+      },
+      "response": []
+    },
+    {
+      "name": "5. ตรวจความจุไม่ถูกต้อง",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"capacity\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/trucks/{{truck_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks",
+            "{{truck_id}}"
+          ]
+        },
+        "description": "คาดหวัง 400 เพราะ capacity ต้องมากกว่า 0 ข้อมูลเดิมจะไม่เปลี่ยน"
+      },
+      "response": []
+    },
+    {
+      "name": "6. ตรวจรถที่ไม่มีอยู่",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/trucks/NOT-FOUND-TRUCK",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "trucks",
+            "NOT-FOUND-TRUCK"
+          ]
+        },
+        "description": "คาดหวัง 404 หากไม่มีรถรหัส NOT-FOUND-TRUCK"
+      },
+      "response": []
+    }
+  ]
+}

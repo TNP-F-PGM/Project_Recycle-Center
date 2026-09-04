@@ -1,0 +1,35 @@
+# Local configuration (shared examples stay in Git)
+.env
+.env.*
+*.env
+!.env.example
+
+# Go
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+coverage.out
+coverage-*.out
+coverage.html
+
+# Generated logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend dependencies and generated build
+node_modules/
+dist/
+*.tsbuildinfo
