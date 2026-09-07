@@ -52,10 +52,10 @@ type DeliveryAssignmentResponse struct {
 }
 
 type DeliveryMaterialResponse struct {
-	MaterialID string `json:"material_id"`
-	Name       string `json:"material_name"`
-	Unit       string `json:"unit"`
-	Quantity   int    `json:"delivery_quantity"`
+	MaterialID string  `json:"material_id"`
+	Name       string  `json:"material_name"`
+	Unit       string  `json:"unit"`
+	Quantity   float64 `json:"delivery_quantity"`
 }
 
 type DeliveryCancellationResponse struct {

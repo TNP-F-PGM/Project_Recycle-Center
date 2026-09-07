@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Package,
+  ScrollText,
   Truck,
   UserRound,
   X,
@@ -42,6 +43,7 @@ export function Layout() {
       ? [
           { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
           { to: '/orders', label: 'คำขอซื้อ', icon: ClipboardList },
+          { to: '/contracts', label: 'สัญญาซื้อขาย', icon: ScrollText },
           { to: '/deliveries', label: 'ติดตามการขนส่ง', icon: Truck },
           { to: '/materials', label: 'รายการวัสดุ', icon: Package },
           { to: '/factories', label: 'โรงงาน', icon: Factory },

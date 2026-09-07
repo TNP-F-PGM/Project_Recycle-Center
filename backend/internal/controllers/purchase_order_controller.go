@@ -52,7 +52,7 @@ func normalizeMaterials(items []dto.PurchaseOrderMaterialInput) error {
 	for i := range items {
 		items[i].MaterialID = strings.TrimSpace(items[i].MaterialID)
 		if items[i].MaterialID == "" || items[i].Quantity <= 0 {
-			return invalid("each material needs a material_id and a positive integer requested_quantity")
+			return invalid("each material needs a material_id and a positive requested_quantity")
 		}
 		if seen[items[i].MaterialID] {
 			return invalid("materials must not contain duplicate material_id values")

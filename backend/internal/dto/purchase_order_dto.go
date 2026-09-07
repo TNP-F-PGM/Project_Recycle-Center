@@ -1,8 +1,8 @@
 package dto
 
 type PurchaseOrderMaterialInput struct {
-	MaterialID string `json:"material_id"`
-	Quantity   int    `json:"requested_quantity"`
+	MaterialID string  `json:"material_id"`
+	Quantity   float64 `json:"requested_quantity"`
 }
 
 type CreatePurchaseOrderRequest struct {
@@ -22,10 +22,10 @@ type UpdatePurchaseOrderRequest struct {
 }
 
 type PurchaseOrderMaterialResponse struct {
-	MaterialID string `json:"material_id"`
-	Name       string `json:"material_name"`
-	Unit       string `json:"unit"`
-	Quantity   int    `json:"requested_quantity"`
+	MaterialID string  `json:"material_id"`
+	Name       string  `json:"material_name"`
+	Unit       string  `json:"unit"`
+	Quantity   float64 `json:"requested_quantity"`
 }
 
 type PurchaseOrderResponse struct {

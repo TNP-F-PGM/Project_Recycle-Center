@@ -97,9 +97,9 @@ function MapPanel({
   const mounted = useRef(false)
 
   useEffect(() => {
-    mounted.current = false
+    mounted.current = true
     const p = initial.current
-    const instance = L.map(host.current!, { scrollWheelZoom: false }).setView(
+    const instance = L.map(host.current!, { scrollWheelZoom: true }).setView(
       p ? [p.latitude, p.longitude] : [13.7563, 100.5018],
       p ? 15 : 6,
     )

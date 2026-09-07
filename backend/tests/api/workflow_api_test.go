@@ -62,7 +62,6 @@ func TestWorkflowValidatesBeforeWriting(t *testing.T) {
 		{"POST", "/purchase-orders", `{}`},
 		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","materials":[]}`},
 		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","materials":[{"material_id":"M1","requested_quantity":0}]}`},
-		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","materials":[{"material_id":"M1","requested_quantity":2.5}]}`},
 		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","materials":[{"material_id":"M1","requested_quantity":1},{"material_id":" M1 ","requested_quantity":2}]}`},
 		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","materials":[{"material_id":"M1","requested_quantity":1}],"delivery":{"destination_latitude":100,"destination_longitude":0}}`},
 		{"POST", "/purchase-orders", `{"factory_id":"F1","sales_staff_id":"S1","order_date":"bad-date","materials":[{"material_id":"M1","requested_quantity":1}]}`},

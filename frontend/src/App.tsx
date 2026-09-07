@@ -15,6 +15,9 @@ import { Drivers } from './pages/Drivers'
 import { ReferenceData } from './pages/ReferenceData'
 import { Help } from './pages/Help'
 import { FactoryFormPage } from './pages/FactoryForm'
+import { Contracts } from './pages/Contracts'
+import { ContractFormPage } from './pages/ContractForm'
+import { ContractDetail } from './pages/ContractDetail'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -37,6 +40,10 @@ export default function App() {
             <Route path="orders/new" element={<OrderFormPage />} />
             <Route path="orders/:id/edit" element={<OrderFormPage />} />
             <Route path="orders/:id" element={<OrderDetail />} />
+            <Route path="contracts" element={<Contracts />} />
+            <Route path="contracts/new" element={<ContractFormPage />} />
+            <Route path="contracts/:id/edit" element={<ContractFormPage />} />
+            <Route path="contracts/:id" element={<ContractDetail />} />
             <Route path="deliveries" element={<Deliveries />} />
             <Route path="deliveries/:id" element={<DeliveryDetail />} />
             <Route path="trucks" element={<Trucks />} />

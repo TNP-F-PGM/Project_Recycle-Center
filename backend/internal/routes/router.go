@@ -14,6 +14,7 @@ func NewRouter(db *gorm.DB) *gin.Engine {
 	trucks := controllers.NewTruckController(db)
 	lookups := controllers.NewLookupController(db)
 	factories := controllers.NewFactoryController(db)
+	contracts := controllers.NewSalesContractController(db)
 	orders := controllers.NewPurchaseOrderController(db)
 	deliveries := controllers.NewDeliveryController(db)
 	locations := controllers.NewLocationController()
@@ -42,6 +43,14 @@ func NewRouter(db *gorm.DB) *gin.Engine {
 	router.PATCH("/drivers/:id", drivers.Update)
 	router.GET("/sales-staff", lookups.ListSalesStaff)
 	router.GET("/transport-supervisors", lookups.ListSupervisors)
+
+	router.GET("/sales-contracts", contracts.List)
+	router.POST("/sales-contracts", contracts.Create)
+	router.GET("/sales-contracts/:id", contracts.Get)
+	router.PATCH("/sales-contracts/:id", contracts.Update)
+	router.GET("/sales-contracts/:id/revisions", contracts.ListRevisions)
+	router.POST("/sales-contracts/:id/revisions", contracts.CreateRevision)
+	router.PATCH("/sales-contracts/:id/revisions/:revisionID", contracts.ReviewRevision)
 
 	router.GET("/purchase-orders", orders.List)
 	router.POST("/purchase-orders", orders.Create)

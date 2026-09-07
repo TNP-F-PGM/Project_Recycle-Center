@@ -96,7 +96,7 @@ func assertOrder(t *testing.T, db *gorm.DB) {
 	if len(order.Materials) != 2 {
 		t.Fatalf("expected two material lines, got %d", len(order.Materials))
 	}
-	quantities := map[string]int{"m1": 10, "m2": 20}
+	quantities := map[string]float64{"m1": 10, "m2": 20}
 	for _, material := range order.Materials {
 		if material.RequestedQuantity != quantities[material.MaterialID] {
 			t.Fatalf("material quantity was not preserved: %+v", material)

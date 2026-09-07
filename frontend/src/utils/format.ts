@@ -11,6 +11,12 @@ export const statusLabels: Record<string, string> = {
   maintenance: 'ซ่อมบำรุง',
   inactive: 'ไม่พร้อมใช้งาน',
   active: 'ใช้งานอยู่',
+  draft: 'ร่างสัญญา',
+  pending_approval: 'รออนุมัติ',
+  pending_signature: 'รอลงนาม',
+  expired: 'หมดอายุ',
+  pending_review: 'รอตรวจสอบ',
+  rejected: 'ไม่อนุมัติ',
 }
 export const number = (value: number) =>
   new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(value)

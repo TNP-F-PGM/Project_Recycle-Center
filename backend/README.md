@@ -1,4 +1,4 @@
-# T20 Backend
+# Backend
 
 Go / Gin สำหรับ HTTP API และ GORM / PostgreSQL สำหรับฐานข้อมูล
 ครอบคลุมรถขนส่ง คำขอซื้อ และการจัดส่ง โดยแยก Models กับ Controllers ตามส่วนงาน

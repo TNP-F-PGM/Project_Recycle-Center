@@ -36,6 +36,57 @@ export interface Material {
   grade: string
   type_name: string
 }
+export type ContractStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'pending_signature'
+  | 'active'
+  | 'expired'
+  | 'cancelled'
+export type RevisionStatus = 'pending_review' | 'pending_signature' | 'completed' | 'rejected'
+export interface ContractMaterial {
+  contract_id: string
+  material_id: string
+  contract_quantity: number
+  unit_price: number
+  volume_discount_percent: number
+}
+export interface ContractRevision {
+  revision_id: string
+  contract_id: string
+  request_type: 'renewal' | 'price_change' | 'discount_change' | 'terms_change' | 'mixed'
+  reason: string
+  original_valid_to: string
+  new_valid_to: string | null
+  original_terms: string
+  new_terms: string | null
+  price_adjustment_percent: number | null
+  new_volume_discount_percent: number | null
+  draft_document: string | null
+  signed_document: string | null
+  request_status: RevisionStatus
+  requested_by: string
+  requested_at: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  review_note: string | null
+}
+export interface SalesContract {
+  contract_id: string
+  contract_date: string
+  valid_from: string
+  valid_to: string
+  status: ContractStatus
+  terms: string
+  document_url: string | null
+  factory_id: string
+  sales_staff_id: string
+  created_at: string
+  updated_at: string
+  factory?: Factory | null
+  materials: ContractMaterial[]
+  revisions?: ContractRevision[]
+}
 export interface Truck {
   truck_id: string
   license_plate: string

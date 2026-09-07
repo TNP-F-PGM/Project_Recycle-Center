@@ -19,6 +19,9 @@ func Run(db *gorm.DB) error {
 		if err := migrateDeliveryRequestOrder(tx); err != nil {
 			return err
 		}
+		if err := migrateLegacySalesContracts(tx); err != nil {
+			return err
+		}
 
 		if err := tx.AutoMigrate(
 			// บัญชีผู้ใช้และบทบาทพนักงาน
@@ -31,6 +34,9 @@ func Run(db *gorm.DB) error {
 			&models.MaterialType{},
 			&models.Material{},
 			&models.Factory{},
+			&models.SalesContract{},
+			&models.SalesContractMaterial{},
+			&models.ContractRevision{},
 
 			// คำขอซื้อ: สร้างก่อนคำขอจัดส่งที่อ้างอิง OrderID
 			&models.PurchaseOrder{},

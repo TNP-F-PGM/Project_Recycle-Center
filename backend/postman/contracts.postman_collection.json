@@ -1,0 +1,139 @@
+{
+  "info": {
+    "_postman_id": "9f0154ad-a897-48f0-8d88-f4ea4b32d2d7",
+    "name": "T20 - Sales Contracts",
+    "description": "ทดสอบวงจรสัญญาขายตั้งแต่สร้าง เปิดใช้งาน ส่งคำขอแก้ไข อนุมัติ รอลงนาม และใช้เงื่อนไขใหม่ กรุณารัน go run ./cmd/seed ก่อนเริ่ม",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "factory_id", "value": "DEMO-F001" },
+    { "key": "sales_staff_id", "value": "DEMO-S001" },
+    { "key": "reviewer_user_id", "value": "DEMO-USER-SALES" },
+    { "key": "material_id", "value": "DEMO-M001" },
+    { "key": "contract_id", "value": "" },
+    { "key": "revision_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Create draft contract",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('contract_id', body.contract_id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"factory_id\": \"{{factory_id}}\",\n  \"sales_staff_id\": \"{{sales_staff_id}}\",\n  \"contract_date\": \"2026-09-07\",\n  \"valid_from\": \"2026-09-15\",\n  \"valid_to\": \"2027-09-14\",\n  \"status\": \"draft\",\n  \"terms\": \"ราคาขายตามตลาด ส่วนลดตามปริมาณ 2%\",\n  \"materials\": [\n    {\n      \"material_id\": \"{{material_id}}\",\n      \"contract_quantity\": 2500.5,\n      \"unit_price\": 12.50,\n      \"volume_discount_percent\": 2\n    }\n  ]\n}"
+        },
+        "url": "{{base_url}}/sales-contracts"
+      }
+    },
+    {
+      "name": "2. Submit contract for approval",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"pending_approval\"\n}" },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}"
+      }
+    },
+    {
+      "name": "3. Approve contract for signature",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"pending_signature\"\n}" },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}"
+      }
+    },
+    {
+      "name": "4. Activate signed contract",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"active\",\n  \"document_url\": \"contracts/demo-contract-signed.pdf\"\n}"
+        },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}"
+      }
+    },
+    {
+      "name": "5. Create revision request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('revision created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('revision_id', body.revision_id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"request_type\": \"mixed\",\n  \"reason\": \"ต่ออายุและปรับราคาตามตลาด\",\n  \"new_valid_to\": \"2029-09-14\",\n  \"new_terms\": \"ปรับราคาขายเพิ่ม 5% และคงส่วนลดตามปริมาณ 2%\",\n  \"price_adjustment_percent\": 5,\n  \"new_volume_discount_percent\": 2,\n  \"draft_document\": \"contracts/demo-revision-draft.pdf\",\n  \"requested_by\": \"{{sales_staff_id}}\"\n}"
+        },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}/revisions"
+      }
+    },
+    {
+      "name": "6. Approve revision for signature",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"pending_signature\",\n  \"reviewed_by\": \"{{reviewer_user_id}}\",\n  \"review_note\": \"อนุมัติเงื่อนไข รอลงนาม\"\n}"
+        },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}/revisions/{{revision_id}}"
+      }
+    },
+    {
+      "name": "7. Complete signed revision",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"completed\",\n  \"reviewed_by\": \"{{reviewer_user_id}}\",\n  \"signed_document\": \"contracts/demo-revision-signed.pdf\"\n}"
+        },
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}/revisions/{{revision_id}}"
+      }
+    },
+    {
+      "name": "8. Get updated contract",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/sales-contracts/{{contract_id}}"
+      }
+    },
+    {
+      "name": "9. List contracts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/sales-contracts"
+      }
+    }
+  ]
+}
