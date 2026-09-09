@@ -24,8 +24,65 @@ export const roles: Record<Role, { title: string; english: string }> = {
   transport: { title: 'หัวหน้าการขนส่ง', english: 'TRANSPORT MANAGER' },
   sales: { title: 'พนักงานขาย', english: 'SALES OFFICER' },
   driver: { title: 'พนักงานขับรถ', english: 'DRIVER' },
+  customer_service: { title: 'พนักงานบริการ', english: 'CUSTOMER SERVICE' },
+  purchasing: { title: 'พนักงานรับซื้อ', english: 'PURCHASING OFFICER' },
+  manager: { title: 'ผู้จัดการ', english: 'MANAGER' },
+  quality: { title: 'เจ้าหน้าที่คัดแยก', english: 'QUALITY OFFICER' },
+  warehouse: { title: 'พนักงานคลังสินค้า', english: 'WAREHOUSE STAFF' },
+  warehouse_manager: { title: 'หัวหน้าคลังสินค้า', english: 'WAREHOUSE MANAGER' },
+}
+const operationalEmployees: Partial<Record<Role, Employee[]>> = {
+  customer_service: [
+    {
+      employee_id: 'DEMO-CS001',
+      user_id: 'DEMO-USER-SERVICE',
+      name: 'พนักงานบริการตัวอย่าง',
+      position: 'Customer service',
+    },
+  ],
+  purchasing: [
+    {
+      employee_id: 'DEMO-PURCHASING-STAFF',
+      user_id: 'DEMO-USER-QUALITY',
+      name: 'พนักงานรับซื้อวัสดุ',
+      position: 'Purchasing officer',
+    },
+  ],
+  manager: [
+    {
+      employee_id: 'DEMO-COMPLAINT-MANAGER',
+      user_id: 'DEMO-USER-MANAGER',
+      name: 'ผู้จัดการตัวอย่าง',
+      position: 'Manager',
+    },
+  ],
+  quality: [
+    {
+      employee_id: 'DEMO-USER-QUALITY',
+      user_id: 'DEMO-USER-QUALITY',
+      name: 'เจ้าหน้าที่คัดแยก',
+      position: 'Quality officer',
+    },
+  ],
+  warehouse: [
+    {
+      employee_id: 'DEMO-WAREHOUSE-STAFF',
+      user_id: 'DEMO-USER-WAREHOUSE',
+      name: 'พนักงานคลังสินค้า',
+      position: 'Warehouse staff',
+    },
+  ],
+  warehouse_manager: [
+    {
+      employee_id: 'DEMO-USER-WAREHOUSE-MANAGER',
+      user_id: 'DEMO-USER-WAREHOUSE-MANAGER',
+      name: 'หัวหน้าคลังสินค้า',
+      position: 'Warehouse manager',
+    },
+  ],
 }
 export function employeesFor(data: AppData, role: Role) {
+  if (operationalEmployees[role]) return operationalEmployees[role]!
   return role === 'transport'
     ? data.supervisors
     : role === 'sales'
@@ -36,7 +93,17 @@ function readWorkspace(): Workspace | null {
   try {
     const v = JSON.parse(localStorage.getItem('recyclehub.workspace') || 'null')
     return v &&
-      ['transport', 'sales', 'driver'].includes(v.role) &&
+      [
+        'transport',
+        'sales',
+        'driver',
+        'customer_service',
+        'purchasing',
+        'manager',
+        'quality',
+        'warehouse',
+        'warehouse_manager',
+      ].includes(v.role) &&
       typeof v.employeeId === 'string'
       ? v
       : null

@@ -1,5 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, Leaf, Truck, ShoppingBag, Route } from 'lucide-react'
+import {
+  ArrowRight,
+  Leaf,
+  Truck,
+  ShoppingBag,
+  Route,
+  ScanLine,
+  Warehouse,
+  ShieldCheck,
+  Headphones,
+  BadgeDollarSign,
+  UserCog,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { ErrorBox, Loading } from '../components/ui'
@@ -72,6 +84,12 @@ export function Welcome() {
                     { value: 'transport', icon: Truck },
                     { value: 'sales', icon: ShoppingBag },
                     { value: 'driver', icon: Route },
+                    { value: 'customer_service', icon: Headphones },
+                    { value: 'purchasing', icon: BadgeDollarSign },
+                    { value: 'manager', icon: UserCog },
+                    { value: 'quality', icon: ScanLine },
+                    { value: 'warehouse', icon: Warehouse },
+                    { value: 'warehouse_manager', icon: ShieldCheck },
                   ] as const
                 ).map(({ value, icon: Icon }) => (
                   <button

@@ -30,8 +30,10 @@ func TestDemoSeedPreservesExistingRecords(t *testing.T) {
 		}
 	}
 	for table, want := range map[string]int64{
-		"users": 3, "sales_staff": 1, "transport_supervisors": 1, "drivers": 1,
+		"users": 9, "sales_staff": 1, "transport_supervisors": 1, "drivers": 1,
+		"warehouse_staffs": 1, "purchasing_staff": 1, "customer_service_officers": 1, "managers": 2, "sellers": 1, "registration_forms": 1,
 		"factories": 1, "material_types": 1, "materials": 2, "trucks": 1,
+		"warehouses": 1, "storage_zones": 2,
 		"purchase_orders": 0, "delivery_requests": 0,
 	} {
 		expectSeedRowCount(t, db, table, want)
@@ -78,7 +80,7 @@ func TestDemoSeedRollsBackOnConflictingLicensePlate(t *testing.T) {
 	if err := seed.Run(db); err == nil {
 		t.Fatal("expected an error for a license plate owned by another truck")
 	}
-	for _, table := range []string{"users", "sales_staff", "transport_supervisors", "drivers", "factories", "material_types", "materials"} {
+	for _, table := range []string{"users", "sales_staff", "transport_supervisors", "drivers", "warehouse_staffs", "purchasing_staff", "customer_service_officers", "managers", "sellers", "registration_forms", "factories", "material_types", "materials", "warehouses", "storage_zones"} {
 		expectSeedRowCount(t, db, table, 0)
 	}
 	expectSeedRowCount(t, db, "trucks", 1)

@@ -10,9 +10,19 @@ import {
   LogOut,
   Menu,
   Package,
+  Boxes,
+  ClipboardCheck,
+  History,
+  MessageSquareWarning,
+  PackagePlus,
+  PackageMinus,
+  ScanLine,
+  SlidersHorizontal,
   ScrollText,
   Truck,
   UserRound,
+  Search,
+  UserPlus,
   X,
 } from 'lucide-react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
@@ -30,13 +40,15 @@ export function Layout() {
   if (!loading && !error && !employee) return <Navigate to="/welcome" replace />
   const role = workspace.role
   const pending = data.deliveries.filter((d) =>
-    role === 'driver'
-      ? d.driver_id === workspace.employeeId && d.status === 'assigned'
-      : ['pending', 'on_hold'].includes(d.status) &&
-        (role !== 'sales' ||
-          data.orders.some(
-            (o) => o.order_id === d.order_id && o.sales_staff_id === workspace.employeeId,
-          )),
+    !['sales', 'transport', 'driver'].includes(role)
+      ? false
+      : role === 'driver'
+        ? d.driver_id === workspace.employeeId && d.status === 'assigned'
+        : ['pending', 'on_hold'].includes(d.status) &&
+          (role !== 'sales' ||
+            data.orders.some(
+              (o) => o.order_id === d.order_id && o.sales_staff_id === workspace.employeeId,
+            )),
   )
   const nav =
     role === 'sales'
@@ -53,12 +65,53 @@ export function Layout() {
             { to: '/', label: 'งานของฉัน', icon: LayoutDashboard },
             { to: '/deliveries', label: 'ประวัติการขนส่ง', icon: ClipboardList },
           ]
-        : [
-            { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
-            { to: '/deliveries', label: 'คำขอรับ–ส่งวัสดุ', icon: ClipboardList },
-            { to: '/trucks', label: 'รถขนส่ง', icon: Truck },
-            { to: '/drivers', label: 'พนักงานขับรถ', icon: UserRound },
-          ]
+        : role === 'quality'
+          ? [
+              { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+              { to: '/quality', label: 'คัดแยกคุณภาพ', icon: ScanLine },
+              { to: '/quality/history', label: 'ประวัติการประเมิน', icon: History },
+            ]
+          : role === 'customer_service'
+            ? [
+                { to: '/', label: 'ภาพรวมงานบริการ', icon: LayoutDashboard },
+                { to: '/complaints', label: 'คำร้องเรียน', icon: MessageSquareWarning },
+                { to: '/returns', label: 'ติดตามการรับคืน', icon: ClipboardCheck },
+              ]
+            : role === 'purchasing'
+              ? [
+                  { to: '/', label: 'ภาพรวมงานรับซื้อ', icon: LayoutDashboard },
+                  { to: '/sellers', label: 'ค้นหาผู้ขาย', icon: Search },
+                  { to: '/sellers/new', label: 'ลงทะเบียนผู้ขาย', icon: UserPlus },
+                  { to: '/purchases', label: 'รายการรับซื้อ', icon: PackagePlus },
+                ]
+              : role === 'manager'
+                ? [
+                    { to: '/', label: 'ภาพรวมสำหรับผู้จัดการ', icon: LayoutDashboard },
+                    { to: '/sellers', label: 'ตรวจสอบผู้ขาย', icon: ClipboardCheck },
+                  ]
+                : role === 'warehouse'
+                  ? [
+                      { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+                      { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
+                      { to: '/receipts', label: 'รับวัสดุเข้าคลัง', icon: PackagePlus },
+                      { to: '/issues', label: 'เบิกจ่ายวัสดุ', icon: PackageMinus },
+                      { to: '/adjustments', label: 'ตรวจนับและปรับยอด', icon: SlidersHorizontal },
+                      { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
+                      { to: '/returns', label: 'รับคืนวัสดุ', icon: ClipboardCheck },
+                    ]
+                  : role === 'warehouse_manager'
+                    ? [
+                        { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+                        { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
+                        { to: '/adjustments', label: 'อนุมัติปรับยอด', icon: ClipboardCheck },
+                        { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
+                      ]
+                    : [
+                        { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+                        { to: '/deliveries', label: 'คำขอรับ–ส่งวัสดุ', icon: ClipboardList },
+                        { to: '/trucks', label: 'รถขนส่ง', icon: Truck },
+                        { to: '/drivers', label: 'พนักงานขับรถ', icon: UserRound },
+                      ]
   return (
     <div className="app-shell">
       {mobile && (
@@ -79,7 +132,12 @@ export function Layout() {
         </div>
         <nav aria-label="เมนูหลัก">
           {nav.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'} onClick={() => setMobile(false)}>
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/' || to === '/quality' || to === '/sellers'}
+              onClick={() => setMobile(false)}
+            >
               <Icon size={18} />
               <span>{label}</span>
               {to === '/deliveries' && pending.length > 0 && (
@@ -122,11 +180,21 @@ export function Layout() {
               })}
             </small>
             <strong>
-              {role === 'transport'
-                ? 'ศูนย์ควบคุมการขนส่ง'
-                : role === 'sales'
-                  ? 'ศูนย์บริหารงานขาย'
-                  : 'งานขนส่งของฉัน'}
+              {
+                (
+                  {
+                    transport: 'ศูนย์ควบคุมการขนส่ง',
+                    sales: 'ศูนย์บริหารงานขาย',
+                    driver: 'งานขนส่งของฉัน',
+                    customer_service: 'ศูนย์จัดการคำร้องเรียน',
+                    purchasing: 'ศูนย์ปฏิบัติการรับซื้อ',
+                    manager: 'ศูนย์บริหารและอนุมัติ',
+                    quality: 'ศูนย์ประเมินคุณภาพวัสดุ',
+                    warehouse: 'ศูนย์ปฏิบัติการคลังสินค้า',
+                    warehouse_manager: 'ศูนย์ควบคุมคลังสินค้า',
+                  } as Record<typeof role, string>
+                )[role]
+              }
             </strong>
           </div>
           <div className="header-actions">

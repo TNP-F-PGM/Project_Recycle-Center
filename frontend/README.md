@@ -4,7 +4,7 @@
 
 ## เปิดใช้งาน
 
-เปิด Docker Desktop ก่อน แล้วเปิด Terminal ที่รากโปรเจกต์ `D:\Downloads\T20`
+เปิด Docker Desktop ก่อน แล้วเปิด Terminal ที่รากโปรเจกต์ที่มีไฟล์ `docker-compose.yml`
 
 **Terminal แรก — ฐานข้อมูลและ API**
 

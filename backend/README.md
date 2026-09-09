@@ -101,6 +101,7 @@ backend/
 │   ├── controllers/         # รับคำขอ ตรวจข้อมูล และบันทึกผล (Gin)
 │   ├── routes/              # เชื่อม URL กับ Controller
 │   ├── migrations/          # สร้าง/ปรับตารางและย้ายข้อมูลเดิม
+│   ├── codes/               # สร้างเลขเอกสารที่ไม่ซ้ำและรองรับคำขอซ้ำ
 │   ├── seed/                # ข้อมูลตัวอย่างสำหรับพัฒนา
 │   └── utils/               # อ่าน JSON ตอบข้อผิดพลาด และสร้างรหัส
 ├── tests/
@@ -149,7 +150,7 @@ URL, JSON และ Postman Collection ใช้แบบเดิม; คำส
 5. เพิ่มข้อมูลตัวอย่างใน `internal/seed/seed.go` เมื่อต้องใช้ และทดสอบ API
 
 ตัวอย่างการไล่โค้ด: `routes/router.go` → `controllers/truck_controller.go` → `dto/truck_dto.go` และ `models/truck.go`
-ตัวช่วยอ่าน JSON อยู่ที่ `utils/json.go` และรูปแบบข้อผิดพลาดอยู่ที่ `utils/response.go`
+ตัวช่วยตอบ JSON ของ API คลังอยู่ที่ `controllers/json.go` และตัวสร้างเลขเอกสารอยู่ที่ `codes/codes.go`
 ไฟล์ migrations และ router เป็นจุดที่หลายคนแก้ร่วมกัน เวลา merge ต้องรวม Models และ Routes ของทุกคน
 ส่วน migration เก็บขั้นตอนย้ายข้อมูลเดิมไว้ เพื่อให้เครื่องที่มีตารางรุ่นก่อนอัปเดตต่อได้
 

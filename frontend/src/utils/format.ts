@@ -17,6 +17,12 @@ export const statusLabels: Record<string, string> = {
   expired: 'หมดอายุ',
   pending_review: 'รอตรวจสอบ',
   rejected: 'ไม่อนุมัติ',
+  approved: 'อนุมัติแล้ว',
+  in_progress: 'กำลังประเมิน',
+  passed: 'ผ่านเกณฑ์',
+  special_storage: 'จัดเก็บพิเศษ',
+  waiting_receipt: 'รอรับเข้าคลัง',
+  received: 'รับเข้าคลังแล้ว',
 }
 export const number = (value: number) =>
   new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(value)

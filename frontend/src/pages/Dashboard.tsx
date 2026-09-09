@@ -13,10 +13,23 @@ import { useApp, roles } from '../context/AppContext'
 import { Empty, Metric, PageIntro, RefreshButton, Status } from '../components/ui'
 import { dateLabel, number, shortId, today, activeDelivery } from '../utils/format'
 import { DriverJobs } from './DriverJobs'
+import { OperationsDashboard } from './operations/OperationsDashboard'
 
 export function Dashboard() {
   const { data, workspace, refresh, refreshing } = useApp()
   if (workspace?.role === 'driver') return <DriverJobs />
+  if (
+    workspace &&
+    [
+      'customer_service',
+      'purchasing',
+      'manager',
+      'quality',
+      'warehouse',
+      'warehouse_manager',
+    ].includes(workspace.role)
+  )
+    return <OperationsDashboard />
   const sales = workspace?.role === 'sales'
   const orders = data.orders.filter((o) => !sales || o.sales_staff_id === workspace?.employeeId)
   const deliveries = data.deliveries.filter(

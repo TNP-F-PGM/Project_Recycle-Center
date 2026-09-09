@@ -1,4 +1,13 @@
-export type Role = 'transport' | 'sales' | 'driver'
+export type Role =
+  | 'transport'
+  | 'sales'
+  | 'driver'
+  | 'customer_service'
+  | 'purchasing'
+  | 'manager'
+  | 'quality'
+  | 'warehouse'
+  | 'warehouse_manager'
 export interface Workspace {
   role: Role
   employeeId: string
@@ -37,12 +46,7 @@ export interface Material {
   type_name: string
 }
 export type ContractStatus =
-  | 'draft'
-  | 'pending_approval'
-  | 'pending_signature'
-  | 'active'
-  | 'expired'
-  | 'cancelled'
+  'draft' | 'pending_approval' | 'pending_signature' | 'active' | 'expired' | 'cancelled'
 export type RevisionStatus = 'pending_review' | 'pending_signature' | 'completed' | 'rejected'
 export interface ContractMaterial {
   contract_id: string
@@ -171,4 +175,160 @@ export interface AppData {
   sales: Employee[]
   supervisors: Employee[]
   drivers: Driver[]
+}
+
+export interface Warehouse {
+  warehouseID: string
+  currentQuantity: number
+  totalCapacity: number
+  lastUpdated: string
+  minStock: number
+  unit: string
+  storageZones?: StorageZone[]
+}
+
+export interface InventoryMaterial {
+  materialID: string
+  materialName: string
+  unit: string
+  status: string
+  grade: string
+  currentQuantity: number
+  minStockLevel: number
+  minimumStockConfigured: boolean
+  belowMin: boolean
+  materialTypeID: number
+  materialType?: { typeID: number; typeName: string }
+  warehouseStocks: { warehouseID: string; quantity: number }[]
+}
+
+export interface StorageZone {
+  zoneID: string
+  zoneName: string
+  capacity: number
+  supportedGrade: string
+  lastUpdated: string
+  stockStatus: string
+  quantityOnHand: number
+  warehouseID: string
+  materialTypeID: number
+  materialID: string
+  material?: InventoryMaterial
+}
+
+export interface QualityAssessment {
+  assessmentID: number
+  assessedGrade: string
+  cleanlinessLevel: string
+  result: string
+  detail?: string | null
+  assessedQuantity: number
+  assessedAt: string
+  assessmentBatchID: string
+  materialID: string
+  material?: InventoryMaterial
+  assessmentBatch?: { assessmentBatchID: string; sellerCode: string; employeeID: string }
+  scrapPurchaseItem?: ScrapPurchase | null
+}
+
+export interface ScrapPurchase {
+  purchaseID: string
+  paymentID?: string | null
+  purchaseDate: string
+  sellerCode: string
+  wasteType: string
+  weight: number
+  pricePerKg: number
+  totalAmount: number
+  employeeID: string
+  materialID: string
+  assessmentID: number
+  material?: InventoryMaterial
+  pendingWarehouseItem?: PendingWarehouseItem | null
+}
+
+export interface AssessmentBatch {
+  assessmentBatchID: string
+  sellerCode: string
+  employeeID: string
+  assessmentDate: string
+  status: string
+  assessments: QualityAssessment[]
+}
+
+export interface PendingWarehouseItem {
+  pendingID: number
+  quantity: number
+  assessedGrade: string
+  assessedBy: string
+  transferredDate: string
+  stockRouteType: string
+  purchaseID: string
+  receivingStatus: string
+  materialID: string
+  material?: InventoryMaterial
+  receivedZoneID?: string
+  remainingCapacityAfter?: number
+}
+
+export interface StockTransaction {
+  transactionID: number
+  quantity: number
+  transactionDate: string
+  employeeID: string
+  zoneID: string
+  balanceAfter: number
+  zone?: StorageZone
+  receiveTransaction?: { receiveNo: string }
+  issueTransaction?: { issueNo: string; referenceNo: string; requestingUnit: string }
+}
+
+export interface StockAdjustment {
+  requestNo: number
+  systemQuantity: number
+  countedQuantity: number
+  description: string
+  attachmentURL?: string | null
+  requestDate: string
+  status: string
+  employeeID: string
+  zoneID: string
+  zone?: StorageZone
+}
+
+export interface Complaint {
+  complaint_id: string
+  complaint_date: string
+  problem_description: string
+  evidence_file: string
+  status: string
+  result?: string | null
+  rejection_reason?: string | null
+  reviewed_by?: string | null
+  order_id: string
+}
+
+export interface Seller {
+  seller_code: string
+  national_id: string
+  user_id: string
+  name: string
+  phone: string
+  email: string
+  address: string
+  seller_type: string
+  account_status: 'active' | 'suspended'
+  suspended_reason?: string
+  registration_date: string
+  identity_documents?: string[]
+  purchasing_staff_id?: string | null
+}
+
+export interface ReturnRecord {
+  return_id: string
+  return_date: string
+  return_quantity: number
+  processed_by: string
+  warehouse_id: string
+  complaint_id: string
 }

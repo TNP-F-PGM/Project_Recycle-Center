@@ -21,6 +21,9 @@ coverage.html
 *.tmp
 *.bak
 
+# Runtime uploads (may contain user documents)
+uploads/
+
 # IDE
 .vscode/
 .idea/

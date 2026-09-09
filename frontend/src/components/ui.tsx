@@ -13,11 +13,11 @@ import {
 import { Link } from 'react-router-dom'
 import { statusLabels } from '../utils/format'
 
-export function Status({ value }: { value: string }) {
+export function Status({ value, label }: { value: string; label?: string }) {
   return (
     <span className={`status status-${value}`}>
       <i />
-      {statusLabels[value] || value}
+      {label || statusLabels[value] || value}
     </span>
   )
 }

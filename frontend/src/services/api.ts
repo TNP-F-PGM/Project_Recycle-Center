@@ -32,9 +32,16 @@ export async function api<T>(
     )
   }
   const payload = await response.json().catch(() => null)
-  if (!response.ok)
-    throw new ApiError(response.status, payload?.error || 'ระบบไม่พร้อมใช้งาน กรุณาลองอีกครั้ง')
-  return payload as T
+  if (!response.ok) {
+    const message =
+      typeof payload?.error === 'string'
+        ? payload.error
+        : payload?.error?.message || 'ระบบไม่พร้อมใช้งาน กรุณาลองอีกครั้ง'
+    throw new ApiError(response.status, message)
+  }
+  // Newer operational endpoints use { success, data, message }. Existing
+  // sales and transport endpoints still return their payload directly.
+  return (payload && payload.success === true && 'data' in payload ? payload.data : payload) as T
 }
 
 const translations: Record<string, string> = {
