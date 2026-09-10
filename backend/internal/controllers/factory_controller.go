@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/SA-1-69/T20/backend/internal/dto"
@@ -15,6 +17,31 @@ import (
 type FactoryController struct{ db *gorm.DB }
 
 func NewFactoryController(db *gorm.DB) *FactoryController { return &FactoryController{db: db} }
+
+// nextFactoryID หาเลขโรงงานล่าสุดในตาราง factories แล้ว +1
+// รูปแบบ: FAC-0001, FAC-0002, ... (เลข 4 หลัก เรียงตามลำดับ ไม่มั่ว)
+// กรองเฉพาะ ID ที่เป็นรูปแบบเลขล้วน เพื่อไม่ให้ ID เก่าแบบ hex random มากวนลำดับ
+func nextFactoryID(db *gorm.DB) (string, error) {
+	var last string
+	err := db.Raw(`
+		SELECT factory_id FROM factories
+		WHERE factory_id ~ '^FAC-[0-9]+$'
+		ORDER BY factory_id DESC
+		LIMIT 1
+	`).Scan(&last).Error
+	if err != nil {
+		return "", err
+	}
+
+	next := 1
+	if last != "" {
+		numberPart := strings.TrimPrefix(last, "FAC-")
+		if n, convErr := strconv.Atoi(numberPart); convErr == nil {
+			next = n + 1
+		}
+	}
+	return fmt.Sprintf("FAC-%04d", next), nil
+}
 
 func factoryCoordinates(latitude, longitude *float64) error {
 	if latitude == nil || longitude == nil {
@@ -57,7 +84,7 @@ func (h *FactoryController) Create(c *gin.Context) {
 	input.FactoryID = strings.TrimSpace(input.FactoryID)
 	if input.FactoryID == "" {
 		var err error
-		input.FactoryID, err = utils.GenerateID("FAC")
+		input.FactoryID, err = nextFactoryID(h.db.WithContext(c.Request.Context()))
 		if err != nil {
 			workflowError(c, err)
 			return
