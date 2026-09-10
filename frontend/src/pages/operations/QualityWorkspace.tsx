@@ -11,7 +11,7 @@ import {
   UserRoundCheck,
   XCircle,
 } from 'lucide-react'
-import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
+import { Empty, ErrorBox, Loading, PageIntro, Status } from '../../components/ui'
 import { QualityHistory } from './QualityHistory'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
@@ -184,9 +184,7 @@ export function QualityWorkspace({ initialTab = 'form' }: { initialTab?: 'form' 
         eyebrow={roles.quality.english}
         title="คัดแยกคุณภาพ"
         description="เลือกชุดประเมิน แล้วบันทึกผลวัสดุทีละรายการ"
-      >
-        <RefreshButton onClick={() => void batches.refresh()} busy={batches.refreshing} />
-      </PageIntro>
+      />
       <ErrorBox message={actionError || batches.error} />
 
       <div className="quality-workspace-tabs" role="tablist" aria-label="งานคัดแยกคุณภาพ">

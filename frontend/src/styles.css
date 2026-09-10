@@ -5773,6 +5773,58 @@ td strong {
 .zone-reference-exact .zone-reference-modal-form .field {
   margin: 0;
 }
+.zone-reference-exact .zone-capacity-summary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #dfe8e1;
+  border-radius: 10px;
+  background: #f7faf7;
+  font-size: 11px;
+  color: #68756d;
+}
+.zone-reference-exact .zone-capacity-summary strong {
+  color: #2f6f2b;
+  font-size: 12px;
+}
+.zone-reference-exact .field-invalid input {
+  border-color: #d66a6a;
+  box-shadow: 0 0 0 1px rgba(214, 106, 106, 0.12);
+}
+.zone-reference-exact .field-warning {
+  margin-top: 6px;
+  color: #b33a3a;
+  font-size: 10px;
+  font-weight: 600;
+}
+.zone-reference-exact .document-code-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #dfe9e2;
+  border-radius: 9px;
+  background: #f4f9f5;
+}
+.zone-reference-exact .document-code-preview span {
+  color: #748279;
+  font-size: 10px;
+}
+.zone-reference-exact .document-code-preview strong {
+  margin-left: auto;
+  color: #245f31;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+.zone-reference-exact .document-code-preview .text-button {
+  flex: 0 0 auto;
+}
+.zone-reference-exact .zone-reference-modal-form input[readonly] {
+  color: #506158;
+  background: #f5f7f5;
+}
 @media (max-width: 1180px) {
   .zone-reference-exact .zone-reference-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

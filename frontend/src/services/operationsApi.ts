@@ -39,6 +39,10 @@ export const operationsApi = {
     api(`${resource('/materials', materialID)}/min-stock`, 'PATCH', { minStockLevel }),
   listWarehouses: () => api<Warehouse[]>('/warehouses'),
   listZones: () => api<StorageZone[]>('/storage-zones'),
+  previewDocumentCode: (kind: 'warehouse' | 'zone', warehouseID = '') =>
+    api<{ code: string }>(
+      `/document-codes?kind=${encodeURIComponent(kind)}${warehouseID ? `&warehouseID=${encodeURIComponent(warehouseID)}` : ''}`,
+    ),
   createWarehouse: (input: CreateWarehouseInput) => api<Warehouse>('/warehouses', 'POST', input),
   createZone: (input: CreateZoneInput) => api<StorageZone>('/storage-zones', 'POST', input),
   updateZone: (zoneID: string, input: UpdateZoneInput) =>
