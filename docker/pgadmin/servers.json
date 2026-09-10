@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "T20 Database",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "recycle_system",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
