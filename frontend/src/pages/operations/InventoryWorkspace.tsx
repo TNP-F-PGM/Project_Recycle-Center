@@ -10,6 +10,8 @@ import type { InventoryMaterial, StorageZone, Warehouse } from '../../types'
 import { number } from '../../utils/format'
 import { capacityPercent } from '../../utils/operations'
 
+const MATERIAL_PAGE_SIZE = 10
+
 export function InventoryWorkspace({ materialSearch = false }: { materialSearch?: boolean } = {}) {
   const { workspace, notify } = useApp()
   const warehouses = useApiList<Warehouse>('/warehouses')
@@ -22,6 +24,7 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
   const [typeFilter, setTypeFilter] = useState('all')
   const [gradeFilter, setGradeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [materialPage, setMaterialPage] = useState(1)
   const [showMinimumManager, setShowMinimumManager] = useState(false)
   const [minimumScope, setMinimumScope] = useState<'unset' | 'all'>('unset')
   const [minimumQuery, setMinimumQuery] = useState('')
@@ -53,6 +56,9 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
       return !needle || [material.materialID, material.materialName, material.materialType?.typeName, material.grade].filter(Boolean).join(' ').toLocaleLowerCase('th').includes(needle)
     })
   }, [gradeFilter, lowOnly, materials.data, query, statusFilter, typeFilter])
+
+  const materialPageCount = Math.max(1, Math.ceil(visibleMaterials.length / MATERIAL_PAGE_SIZE))
+  const paginatedMaterials = visibleMaterials.slice((materialPage - 1) * MATERIAL_PAGE_SIZE, materialPage * MATERIAL_PAGE_SIZE)
 
   const materialTypes = useMemo(() => {
     const byID = new Map<string, string>()
@@ -145,6 +151,7 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
     try {
       await operationsApi.updateMinimumStock(materialID, value)
       await materials.refresh()
+      setMaterialPage(1)
       notify('บันทึกเกณฑ์ขั้นต่ำแล้ว')
       return true
     } catch (cause) {
@@ -194,21 +201,21 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
               <Search size={15} />
               <input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => { setQuery(event.target.value); setMaterialPage(1) }}
                 placeholder="ค้นหาชื่อวัสดุหรือรหัส..."
               />
             </label>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="ประเภทวัสดุ">
+            <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setMaterialPage(1) }} aria-label="ประเภทวัสดุ">
               <option value="all">ทุกประเภท</option>
               {materialTypes.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
-            <select value={gradeFilter} onChange={(event) => setGradeFilter(event.target.value)} aria-label="เกรดวัสดุ">
+            <select value={gradeFilter} onChange={(event) => { setGradeFilter(event.target.value); setMaterialPage(1) }} aria-label="เกรดวัสดุ">
               <option value="all">ทุกเกรด</option>
               <option value="A">เกรด A</option>
               <option value="B">เกรด B</option>
               <option value="C">เกรด C</option>
             </select>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="สถานะวัสดุ">
+            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setMaterialPage(1) }} aria-label="สถานะวัสดุ">
               <option value="all">ทุกสถานะ</option>
               <option value="normal">ปกติ</option>
               <option value="below">ต่ำกว่าเกณฑ์</option>
@@ -235,7 +242,7 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleMaterials.map((material) => (
+                  {paginatedMaterials.map((material) => (
                     <tr key={`${material.materialID}-${material.grade || 'none'}`}>
                       <td><strong>{material.materialID}</strong></td>
                       <td><strong>{material.materialName}</strong></td>
@@ -259,7 +266,44 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
             </div>
           )}
         </section>
-        <p className="inventory-reference-count">แสดง {visibleMaterials.length} รายการจากทั้งหมด {materials.data.length} รายการ</p>
+        <div className="material-search-pagination-wrap">
+          <p className="inventory-reference-count">
+            แสดง {visibleMaterials.length === 0 ? 0 : (materialPage - 1) * MATERIAL_PAGE_SIZE + 1}-{Math.min(materialPage * MATERIAL_PAGE_SIZE, visibleMaterials.length)} จาก {visibleMaterials.length} รายการ
+          </p>
+          {materialPageCount > 1 && (
+            <nav className="material-search-pagination" aria-label="หน้ารายการวัสดุ">
+              <button
+                type="button"
+                className="button secondary compact"
+                disabled={materialPage === 1}
+                onClick={() => setMaterialPage((page) => Math.max(1, page - 1))}
+              >
+                ก่อนหน้า
+              </button>
+              <div className="material-search-page-numbers">
+                {Array.from({ length: materialPageCount }, (_, index) => index + 1).map((page) => (
+                  <button
+                    type="button"
+                    key={page}
+                    className={`material-search-page-number ${materialPage === page ? 'active' : ''}`}
+                    aria-current={materialPage === page ? 'page' : undefined}
+                    onClick={() => setMaterialPage(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="button secondary compact"
+                disabled={materialPage === materialPageCount}
+                onClick={() => setMaterialPage((page) => Math.min(materialPageCount, page + 1))}
+              >
+                ถัดไป
+              </button>
+            </nav>
+          )}
+        </div>
 
         {showMinimumManager && (
           <Modal
