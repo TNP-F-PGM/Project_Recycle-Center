@@ -31,6 +31,16 @@ import { ErrorBox, Loading } from './ui'
 import { shortId } from '../utils/format'
 import { Brand } from './Brand'
 
+export const warehouseNavigation = [
+  { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+  { to: '/receipts', label: 'รับวัสดุเข้าคลัง', icon: PackagePlus },
+  { to: '/issues', label: 'เบิกจ่ายวัสดุ', icon: PackageMinus },
+  { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
+  { to: '/adjustments', label: 'ตรวจนับและปรับยอด', icon: SlidersHorizontal },
+  { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
+  { to: '/returns', label: 'รับคืนวัสดุ', icon: ClipboardCheck },
+]
+
 export function Layout() {
   const { workspace, employee, data, error, refresh, loading, toast, setWorkspace } = useApp()
   const [mobile, setMobile] = useState(false)
@@ -90,15 +100,7 @@ export function Layout() {
                     { to: '/sellers', label: 'ตรวจสอบผู้ขาย', icon: ClipboardCheck },
                   ]
                 : role === 'warehouse'
-                  ? [
-                      { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
-                      { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
-                      { to: '/receipts', label: 'รับวัสดุเข้าคลัง', icon: PackagePlus },
-                      { to: '/issues', label: 'เบิกจ่ายวัสดุ', icon: PackageMinus },
-                      { to: '/adjustments', label: 'ตรวจนับและปรับยอด', icon: SlidersHorizontal },
-                      { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
-                      { to: '/returns', label: 'รับคืนวัสดุ', icon: ClipboardCheck },
-                    ]
+                  ? warehouseNavigation
                   : role === 'warehouse_manager'
                     ? [
                         { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
