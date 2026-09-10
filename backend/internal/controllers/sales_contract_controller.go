@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +19,31 @@ type SalesContractController struct{ db *gorm.DB }
 
 func NewSalesContractController(db *gorm.DB) *SalesContractController {
 	return &SalesContractController{db: db}
+}
+
+// nextContractID หาเลขสัญญาล่าสุดในตาราง sales_contracts แล้ว +1
+// รูปแบบ: CON-0001, CON-0002, ... (เลข 4 หลัก เรียงตามลำดับ ไม่มั่ว)
+// กรองเฉพาะ ID ที่เป็นรูปแบบเลขล้วน เพื่อไม่ให้ ID เก่าแบบ hex random มากวนลำดับ
+func nextContractID(tx *gorm.DB) (string, error) {
+	var last string
+	err := tx.Raw(`
+		SELECT contract_id FROM sales_contracts
+		WHERE contract_id ~ '^CON-[0-9]+$'
+		ORDER BY contract_id DESC
+		LIMIT 1
+	`).Scan(&last).Error
+	if err != nil {
+		return "", err
+	}
+
+	next := 1
+	if last != "" {
+		numberPart := strings.TrimPrefix(last, "CON-")
+		if n, convErr := strconv.Atoi(numberPart); convErr == nil {
+			next = n + 1
+		}
+	}
+	return fmt.Sprintf("CON-%04d", next), nil
 }
 
 func contractDetails(db *gorm.DB, id string) (models.SalesContract, error) {
@@ -182,13 +209,6 @@ func (h *SalesContractController) Create(c *gin.Context) {
 		return
 	}
 	input.ContractID = strings.TrimSpace(input.ContractID)
-	if input.ContractID == "" {
-		input.ContractID, err = utils.GenerateID("CON")
-		if err != nil {
-			workflowError(c, err)
-			return
-		}
-	}
 	var documentURL *string
 	if value := strings.TrimSpace(input.DocumentURL); value != "" {
 		documentURL = &value
@@ -200,6 +220,13 @@ func (h *SalesContractController) Create(c *gin.Context) {
 		}
 		if err := requireReference(tx, "sales_staff", "employee_id", input.SalesStaffID); err != nil {
 			return err
+		}
+		if input.ContractID == "" {
+			generatedID, genErr := nextContractID(tx)
+			if genErr != nil {
+				return genErr
+			}
+			input.ContractID = generatedID
 		}
 		contract := models.SalesContract{
 			ContractID: input.ContractID, FactoryID: input.FactoryID, SalesStaffID: input.SalesStaffID,
