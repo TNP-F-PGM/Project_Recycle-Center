@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react'
-import { Check, ClipboardCheck, Scale, X } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { Check, ClipboardCheck, FileImage, Scale, X } from 'lucide-react'
 import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
-import { api, errorText } from '../../services/api'
+import { errorText } from '../../services/api'
+import { operationsApi } from '../../services/operationsApi'
 import type { StockAdjustment, StorageZone } from '../../types'
 import { dateLabel, number } from '../../utils/format'
+import { stockDiscrepancy, validateCountInput, validateDecision } from '../../utils/operations'
 
 export function AdjustmentsWorkspace() {
   const { workspace, employee, notify } = useApp()
@@ -14,10 +16,17 @@ export function AdjustmentsWorkspace() {
   const [selected, setSelected] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const manager = workspace?.role === 'warehouse_manager'
+  const visibleAdjustments = useMemo(() =>
+    adjustments.data
+      .filter((item) => statusFilter === 'all' || item.status === statusFilter)
+      .slice()
+      .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requestNo - a.requestNo),
+  [adjustments.data, statusFilter])
   const row =
-    adjustments.data.find((item) => item.requestNo === selected) ||
-    adjustments.data.find((item) => item.status === 'pending')
+    visibleAdjustments.find((item) => item.requestNo === selected) ||
+    visibleAdjustments.find((item) => item.status === 'pending') || visibleAdjustments[0]
   const refresh = () => Promise.all([adjustments.refresh(), zones.refresh()])
 
   async function create(event: FormEvent<HTMLFormElement>) {
@@ -25,12 +34,20 @@ export function AdjustmentsWorkspace() {
     const target = event.currentTarget
     const form = new FormData(target)
     const zoneID = String(form.get('zoneID'))
+    const countedQuantity = Number(form.get('countedQuantity'))
+    const description = String(form.get('description'))
+    const validation = validateCountInput({ countedQuantity, description })
+    if (validation) {
+      setError(validation)
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await api(`/storage-zones/${encodeURIComponent(zoneID)}/adjustments`, 'POST', {
-        countedQuantity: Number(form.get('countedQuantity')),
-        description: form.get('description'),
+      await operationsApi.createAdjustment(zoneID, {
+        countedQuantity,
+        description,
+        attachmentURL: String(form.get('attachmentURL') || '').trim() || null,
         employeeID: employee?.user_id || workspace!.employeeId,
       })
       target.reset()
@@ -52,13 +69,14 @@ export function AdjustmentsWorkspace() {
       setError('กรุณาระบุยอดที่อนุมัติให้ถูกต้อง')
       return
     }
-    if (decision === 'rejected' && !reason) {
-      setError('กรุณาระบุเหตุผลที่ไม่อนุมัติ')
+    const validation = validateDecision({ decision, reason })
+    if (validation) {
+      setError(validation)
       return
     }
     setBusy(true)
     try {
-      await api(`/stock-adjustments/${row.requestNo}/decision`, 'POST', {
+      await operationsApi.decideAdjustment(row.requestNo, {
         employeeID: employee?.user_id || workspace!.employeeId,
         decision,
         approvedQuantity: decision === 'approved' ? Number(approvedText) : undefined,
@@ -75,7 +93,7 @@ export function AdjustmentsWorkspace() {
   }
   if (adjustments.loading || zones.loading) return <Loading />
   return (
-    <>
+    <div className="operations-workspace adjustments-page">
       <PageIntro
         eyebrow={roles[workspace!.role].english}
         title={manager ? 'อนุมัติการปรับยอด' : 'ตรวจนับและปรับยอด'}
@@ -121,6 +139,10 @@ export function AdjustmentsWorkspace() {
               สาเหตุที่ยอดไม่ตรง
               <input name="description" placeholder="เช่น ตรวจนับประจำเดือนพบยอดขาด" required />
             </label>
+            <label className="field wide-field">
+              ลิงก์หลักฐาน (ถ้ามี)
+              <input name="attachmentURL" type="url" placeholder="https://... รูปถ่ายหรือเอกสารผลตรวจนับ" />
+            </label>
             <button className="button primary" disabled={busy}>
               ส่งคำขอ
             </button>
@@ -140,7 +162,10 @@ export function AdjustmentsWorkspace() {
               </p>
             </div>
           </div>
-          {!adjustments.data.length ? (
+          {manager && <div className="status-tabs" aria-label="กรองสถานะคำขอ">
+            {[['pending', 'รออนุมัติ'], ['approved', 'อนุมัติแล้ว'], ['rejected', 'ปฏิเสธแล้ว'], ['all', 'ทั้งหมด']].map(([value, label]) => <button key={value} className={statusFilter === value ? 'active' : ''} onClick={() => { setStatusFilter(value); setSelected(null) }}>{label}</button>)}
+          </div>}
+          {!visibleAdjustments.length ? (
             <Empty title="ยังไม่มีคำขอปรับยอด" message="คำขอจากพนักงานคลังจะแสดงที่นี่" />
           ) : (
             <div className="table-scroll">
@@ -155,7 +180,9 @@ export function AdjustmentsWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {adjustments.data.map((item) => (
+                  {visibleAdjustments.map((item) => {
+                    const difference = stockDiscrepancy(item.systemQuantity, item.countedQuantity)
+                    return (
                     <tr
                       key={item.requestNo}
                       className={row?.requestNo === item.requestNo ? 'selected-row' : ''}
@@ -183,6 +210,7 @@ export function AdjustmentsWorkspace() {
                       <td className="numeric">{number(item.systemQuantity)}</td>
                       <td className="numeric">
                         <strong>{number(item.countedQuantity)}</strong>
+                        <small className={difference.amount < 0 ? 'negative' : difference.amount > 0 ? 'positive' : ''}>{difference.amount > 0 ? '+' : ''}{number(difference.amount)}</small>
                       </td>
                       <td>
                         <Status
@@ -191,7 +219,7 @@ export function AdjustmentsWorkspace() {
                         />
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -232,6 +260,7 @@ export function AdjustmentsWorkspace() {
                   </div>
                 </div>
                 <p className="reason-box">{row.description}</p>
+                {row.attachmentURL && <a className="evidence-link" href={row.attachmentURL} target="_blank" rel="noreferrer"><FileImage size={17} /> เปิดหลักฐานประกอบ</a>}
                 <label className="field">
                   ยอดที่อนุมัติ (กก.)
                   <input
@@ -276,6 +305,6 @@ export function AdjustmentsWorkspace() {
           </section>
         )}
       </div>
-    </>
+    </div>
   )
 }

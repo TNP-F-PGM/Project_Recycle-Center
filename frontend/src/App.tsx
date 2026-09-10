@@ -20,10 +20,13 @@ import { Contracts } from './pages/Contracts'
 import { ContractFormPage } from './pages/ContractForm'
 import { ContractDetail } from './pages/ContractDetail'
 import { QualityWorkspace } from './pages/operations/QualityWorkspace'
+import { QualityHistory } from './pages/operations/QualityHistory'
+import { QualityReport } from './pages/operations/QualityReport'
 import { PurchasingWorkspace } from './pages/operations/PurchasingWorkspace'
 import { InventoryWorkspace } from './pages/operations/InventoryWorkspace'
 import { StockMovementWorkspace } from './pages/operations/StockMovementWorkspace'
 import { AdjustmentsWorkspace } from './pages/operations/AdjustmentsWorkspace'
+import { ZoneWorkspace } from './pages/operations/ZoneWorkspace'
 import { ComplaintsWorkspace, ReturnsWorkspace } from './pages/operations/ComplaintsWorkspace'
 import { SellerWorkspace } from './pages/operations/SellerWorkspace'
 import { useApp } from './context/AppContext'
@@ -32,6 +35,13 @@ import type { Role } from './types'
 function RoleRoute({ allowed, children }: { allowed: Role[]; children: ReactNode }) {
   const { workspace } = useApp()
   return workspace && allowed.includes(workspace.role) ? children : <Navigate to="/" replace />
+}
+
+function InventoryByWarehouseRole() {
+  const { workspace } = useApp()
+  return workspace && ['warehouse', 'warehouse_manager'].includes(workspace.role)
+    ? <ZoneWorkspace />
+    : <InventoryWorkspace />
 }
 
 function ScrollToTop() {
@@ -191,7 +201,15 @@ export default function App() {
               path="quality/history"
               element={
                 <RoleRoute allowed={['quality']}>
-                  <QualityWorkspace historyOnly />
+                  <QualityWorkspace initialTab="history" />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="quality/report"
+              element={
+                <RoleRoute allowed={['quality']}>
+                  <QualityReport />
                 </RoleRoute>
               }
             />
@@ -223,7 +241,15 @@ export default function App() {
               path="inventory"
               element={
                 <RoleRoute allowed={['warehouse', 'warehouse_manager']}>
-                  <InventoryWorkspace />
+                  <InventoryByWarehouseRole />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="material-search"
+              element={
+                <RoleRoute allowed={['warehouse', 'warehouse_manager']}>
+                  <InventoryWorkspace materialSearch />
                 </RoleRoute>
               }
             />
@@ -256,6 +282,14 @@ export default function App() {
               element={
                 <RoleRoute allowed={['warehouse', 'warehouse_manager']}>
                   <AdjustmentsWorkspace />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="zones"
+              element={
+                <RoleRoute allowed={['warehouse_manager']}>
+                  <ZoneWorkspace />
                 </RoleRoute>
               }
             />

@@ -1,11 +1,13 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, PackageCheck, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { ArrowDownToLine, ArrowUpFromLine, Filter, PackageCheck, Search, SlidersHorizontal } from 'lucide-react'
 import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
-import { api, errorText } from '../../services/api'
-import type { PendingWarehouseItem, StockTransaction, StorageZone } from '../../types'
-import { dateLabel, number } from '../../utils/format'
+import { errorText } from '../../services/api'
+import { operationsApi } from '../../services/operationsApi'
+import type { EligibleStorageZone, PendingWarehouseItem, StockTransaction, StorageZone } from '../../types'
+import { dateLabel, number, today } from '../../utils/format'
+import { filterPendingItems, filterTransactions, validateIssueInput, validateReceiptInput } from '../../utils/operations'
 
 type View = 'receipts' | 'issues' | 'history'
 
@@ -17,40 +19,71 @@ export function StockMovementWorkspace({ view }: { view: View }) {
   const [selectedPending, setSelectedPending] = useState<number | null>(null)
   const [selectedZone, setSelectedZone] = useState('')
   const [receiveZoneID, setReceiveZoneID] = useState('')
+  const [eligibleZones, setEligibleZones] = useState<EligibleStorageZone[]>([])
+  const [loadingZones, setLoadingZones] = useState(false)
+  const [receiptQuery, setReceiptQuery] = useState('')
+  const [receiptStatus, setReceiptStatus] = useState('waiting_receipt')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const receiveRequestID = useRef(crypto.randomUUID())
   const issueRequestID = useRef(crypto.randomUUID())
   const refresh = () => Promise.all([pending.refresh(), zones.refresh(), transactions.refresh()])
-  const waiting = pending.data.filter((item) => item.receivingStatus === 'waiting_receipt')
-  const item = waiting.find((row) => row.pendingID === selectedPending) || waiting[0]
-  const eligibleZones = useMemo(
-    () =>
-      item
-        ? zones.data.filter(
-            (zone) =>
-              zone.materialID === item.materialID &&
-              zone.supportedGrade === item.assessedGrade &&
-              zone.stockStatus === 'available' &&
-              zone.capacity > zone.quantityOnHand,
-          )
-        : [],
-    [item, zones.data],
+  const receiptRows = useMemo(
+    () => filterPendingItems(pending.data, { status: receiptStatus, query: receiptQuery }),
+    [pending.data, receiptQuery, receiptStatus],
   )
+  const item = receiptRows.find((row) => row.pendingID === selectedPending) || receiptRows[0]
   const receiveZone = eligibleZones.find((row) => row.zoneID === receiveZoneID) || eligibleZones[0]
-  const zone = zones.data.find((row) => row.zoneID === selectedZone) || zones.data[0]
+  const zone = zones.data.find((row) => row.zoneID === selectedZone) || zones.data.find((row) => row.quantityOnHand > 0)
+
+  useEffect(() => {
+    if (!item || item.receivingStatus !== 'waiting_receipt') {
+      setEligibleZones([])
+      setReceiveZoneID('')
+      return
+    }
+    let active = true
+    setLoadingZones(true)
+    operationsApi.listEligibleZones(item.pendingID)
+      .then((rows) => {
+        if (!active) return
+        const zonesWithEnoughCapacity = rows.filter((row) => row.availableCapacity + 0.001 >= item.quantity)
+        setEligibleZones(zonesWithEnoughCapacity)
+        setReceiveZoneID((current) => zonesWithEnoughCapacity.some((row) => row.zoneID === current) ? current : zonesWithEnoughCapacity[0]?.zoneID || '')
+      })
+      .catch((cause) => {
+        if (active) setError(errorText(cause))
+      })
+      .finally(() => {
+        if (active) setLoadingZones(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [item?.pendingID, item?.receivingStatus])
 
   async function receive(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     if (!item) return
+    const quantity = Number(form.get('quantity'))
+    const validation = validateReceiptInput({
+      quantity,
+      assessedQuantity: item.quantity,
+      availableCapacity: receiveZone?.availableCapacity || 0,
+    })
+    if (validation) {
+      setError(validation)
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await api(`/pending-warehouse-items/${item.pendingID}/receive`, 'POST', {
-        zoneID: form.get('zoneID'),
+      await operationsApi.receivePendingItem(item.pendingID, {
+        receiveNo: '',
+        zoneID: String(form.get('zoneID')),
         employeeID: employee?.user_id || workspace!.employeeId,
-        quantity: Number(form.get('quantity')),
+        quantity,
         requestID: receiveRequestID.current,
       })
       receiveRequestID.current = crypto.randomUUID()
@@ -68,14 +101,26 @@ export function StockMovementWorkspace({ view }: { view: View }) {
     const target = event.currentTarget
     const form = new FormData(target)
     if (!zone) return
+    const input = {
+      quantity: Number(form.get('quantity')),
+      balance: zone.quantityOnHand,
+      referenceNo: String(form.get('referenceNo')),
+      requestingUnit: String(form.get('requestingUnit')),
+    }
+    const validation = validateIssueInput(input)
+    if (validation) {
+      setError(validation)
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await api(`/storage-zones/${encodeURIComponent(zone.zoneID)}/issues`, 'POST', {
-        referenceNo: form.get('referenceNo'),
-        requestingUnit: form.get('requestingUnit'),
+      await operationsApi.issueFromZone(zone.zoneID, {
+        issueNo: '',
+        referenceNo: input.referenceNo,
+        requestingUnit: input.requestingUnit,
         employeeID: employee?.user_id || workspace!.employeeId,
-        quantity: Number(form.get('quantity')),
+        quantity: input.quantity,
         requestID: issueRequestID.current,
       })
       issueRequestID.current = crypto.randomUUID()
@@ -100,7 +145,7 @@ export function StockMovementWorkspace({ view }: { view: View }) {
     )
   const receipt = view === 'receipts'
   return (
-    <>
+    <div className="operations-workspace stock-movement-page">
       <PageIntro
         eyebrow={roles.warehouse.english}
         title={receipt ? 'รับวัสดุเข้าคลัง' : 'เบิกจ่ายวัสดุ'}
@@ -124,11 +169,25 @@ export function StockMovementWorkspace({ view }: { view: View }) {
                 <h2>
                   <ArrowDownToLine size={17} /> รายการรอรับเข้า
                 </h2>
-                <p>{waiting.length} รายการที่พร้อมจัดเก็บ</p>
+                <p>{receiptRows.length} รายการตามตัวกรอง</p>
               </div>
             </div>
+            <div className="movement-filters">
+              <label className="input-with-icon">
+                <Search size={15} />
+                <input value={receiptQuery} onChange={(event) => setReceiptQuery(event.target.value)} placeholder="ค้นหาเลขรับซื้อหรือวัสดุ" />
+              </label>
+              <label>
+                <Filter size={15} />
+                <select value={receiptStatus} onChange={(event) => { setReceiptStatus(event.target.value); setSelectedPending(null) }}>
+                  <option value="waiting_receipt">รอรับเข้า</option>
+                  <option value="received">รับเข้าแล้ว</option>
+                  <option value="all">ทั้งหมด</option>
+                </select>
+              </label>
+            </div>
             <div className="selection-list roomy">
-              {waiting.map((row) => (
+              {receiptRows.map((row) => (
                 <button
                   key={row.pendingID}
                   className={item?.pendingID === row.pendingID ? 'selected' : ''}
@@ -141,10 +200,10 @@ export function StockMovementWorkspace({ view }: { view: View }) {
                       {row.purchaseID} · เกรด {row.assessedGrade}
                     </small>
                   </span>
-                  <b>{number(row.quantity)} กก.</b>
+                  <span className="receipt-row-tail"><b>{number(row.quantity)} กก.</b><Status value={row.receivingStatus} /></span>
                 </button>
               ))}
-              {!waiting.length && (
+              {!receiptRows.length && (
                 <Empty
                   title="ไม่มีรายการรอรับเข้า"
                   message="รายการที่ฝ่ายคัดแยกส่งมาจะปรากฏที่นี่"
@@ -165,7 +224,7 @@ export function StockMovementWorkspace({ view }: { view: View }) {
                 </p>
               </div>
             </div>
-            {item ? (
+            {item && item.receivingStatus === 'waiting_receipt' ? (
               <form key={item.pendingID} className="operation-form" onSubmit={receive}>
                 <label className="field">
                   พื้นที่จัดเก็บ
@@ -177,12 +236,13 @@ export function StockMovementWorkspace({ view }: { view: View }) {
                   >
                     {eligibleZones.map((z) => (
                       <option key={z.zoneID} value={z.zoneID}>
-                        {z.zoneName} · เหลือ {number(z.capacity - z.quantityOnHand)} กก.
+                        {z.zoneName} · {z.warehouseID} · เหลือ {number(z.availableCapacity)} กก.
                       </option>
                     ))}
                   </select>
                 </label>
-                {!eligibleZones.length && (
+                {loadingZones && <p className="field-hint">กำลังตรวจสอบพื้นที่ที่รองรับ…</p>}
+                {!loadingZones && !eligibleZones.length && (
                   <div className="warning-note">
                     ยังไม่มีพื้นที่ที่รองรับวัสดุและเกรดนี้ กรุณาให้หัวหน้าคลังเพิ่มโซนก่อน
                   </div>
@@ -195,22 +255,20 @@ export function StockMovementWorkspace({ view }: { view: View }) {
                     min="0.01"
                     max={Math.min(
                       item.quantity,
-                      receiveZone?.capacity ? receiveZone.capacity - receiveZone.quantityOnHand : 0,
+                      receiveZone?.availableCapacity || 0,
                     )}
                     step="0.01"
                     defaultValue={item.quantity}
                     required
                   />
                 </label>
-                <button className="button primary" disabled={busy || !eligibleZones.length}>
+                {receiveZone && <div className="zone-capacity-preview"><span>ความจุคงเหลือของ {receiveZone.zoneName}</span><strong>{number(receiveZone.availableCapacity)} กก.</strong></div>}
+                <button className="button primary" disabled={busy || loadingZones || !eligibleZones.length}>
                   <ArrowDownToLine size={16} /> ยืนยันรับเข้าคลัง
                 </button>
               </form>
             ) : (
-              <Empty
-                title="ยังไม่มีงานรับเข้า"
-                message="เมื่อมีวัสดุผ่านการประเมิน ระบบจะแสดงรายการที่นี่"
-              />
+              <Empty title={item ? 'รายการนี้รับเข้าแล้ว' : 'ยังไม่มีงานรับเข้า'} message={item ? `จัดเก็บที่ ${item.receivedZoneID || 'พื้นที่ที่บันทึกไว้'}` : 'เมื่อมีวัสดุผ่านการประเมิน ระบบจะแสดงรายการที่นี่'} />
             )}
           </section>
         </div>
@@ -291,7 +349,7 @@ export function StockMovementWorkspace({ view }: { view: View }) {
           </section>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
@@ -308,8 +366,13 @@ function StockHistory({
 }) {
   const { workspace } = useApp()
 
+  const [type, setType] = useState('all')
+  const [query, setQuery] = useState('')
+  const [date, setDate] = useState('')
+  const filtered = useMemo(() => filterTransactions(rows, { type, query, date }), [rows, type, query, date])
+
   return (
-    <>
+    <div className="operations-workspace stock-history-page">
       <PageIntro
         eyebrow={roles[workspace!.role].english}
         title="ประวัติการเคลื่อนไหว"
@@ -318,8 +381,14 @@ function StockHistory({
         <RefreshButton onClick={() => void refresh()} busy={refreshing} />
       </PageIntro>
       <ErrorBox message={error} />
+      <section className="panel operation-toolbar transaction-toolbar">
+        <label className="field search-field">ค้นหารายการ พื้นที่ หรือเลขอ้างอิง<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="เช่น TX-1 หรือ โซน A1" /></label>
+        <label className="field">ประเภท<select value={type} onChange={(event) => setType(event.target.value)}><option value="all">ทั้งหมด</option><option value="receive">รับเข้า</option><option value="issue">เบิกจ่าย</option><option value="adjustment">ปรับยอด</option></select></label>
+        <label className="field">วันที่<input type="date" value={date} max={today()} onChange={(event) => setDate(event.target.value)} /></label>
+        {(query || date || type !== 'all') && <button className="button secondary" onClick={() => { setQuery(''); setDate(''); setType('all') }}>ล้างตัวกรอง</button>}
+      </section>
       <section className="panel">
-        {!rows.length ? (
+        {!filtered.length ? (
           <Empty title="ยังไม่มีการเคลื่อนไหว" message="รายการรับเข้าและเบิกจ่ายจะแสดงที่นี่" />
         ) : (
           <div className="table-scroll">
@@ -335,7 +404,7 @@ function StockHistory({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
+                {filtered.map((row) => {
                   const issue = !!row.issueTransaction
                   const adjustment = !issue && !row.receiveTransaction
                   const outbound = row.quantity < 0
@@ -375,6 +444,6 @@ function StockHistory({
           </div>
         )}
       </section>
-    </>
+    </div>
   )
 }

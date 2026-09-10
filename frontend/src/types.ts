@@ -332,3 +332,90 @@ export interface ReturnRecord {
   warehouse_id: string
   complaint_id: string
 }
+
+export interface AssessmentSellerOption {
+  sellerCode: string
+  name: string
+}
+
+export interface EligibleStorageZone {
+  zoneID: string
+  zoneName: string
+  capacity: number
+  quantityOnHand: number
+  availableCapacity: number
+  supportedGrade: string
+  stockStatus: string
+  warehouseID?: string
+}
+
+export interface CreateAssessmentBatchInput {
+  sellerCode: string
+  employeeID: string
+  requestID: string
+}
+
+export interface CreateAssessmentInput {
+  materialID: string
+  assessedQuantity: number
+  assessedGrade: string
+  cleanlinessLevel: string
+  result: string
+  detail: string | null
+}
+
+export interface ReceivePendingInput {
+  receiveNo: string
+  zoneID: string
+  employeeID: string
+  quantity: number
+  requestID: string
+}
+
+export interface IssueFromZoneInput {
+  issueNo: string
+  referenceNo: string
+  requestingUnit: string
+  employeeID: string
+  quantity: number
+  requestID: string
+}
+
+export interface CreateAdjustmentInput {
+  countedQuantity: number
+  description: string
+  attachmentURL?: string | null
+  employeeID: string
+}
+
+export interface StockDecisionInput {
+  employeeID: string
+  decision: 'approved' | 'rejected'
+  approvedQuantity?: number
+  decisionReason?: string | null
+}
+
+export interface CreateWarehouseInput {
+  totalCapacity: number
+  minStock: number
+  unit: string
+  requestID: string
+}
+
+export interface CreateZoneInput {
+  zoneName: string
+  capacity: number
+  supportedGrade: string
+  stockStatus: string
+  warehouseID: string
+  materialTypeID: number
+  materialID: string
+  requestID: string
+}
+
+export interface UpdateZoneInput {
+  zoneName?: string
+  capacity?: number
+  supportedGrade?: string
+  stockStatus?: string
+}
