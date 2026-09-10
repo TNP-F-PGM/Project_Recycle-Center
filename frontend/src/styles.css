@@ -4412,6 +4412,39 @@ td strong {
   text-align: center;
   font-size: 11px;
 }
+.material-search-reference-exact .material-search-pagination-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 8px;
+}
+.material-search-reference-exact .material-search-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.material-search-reference-exact .material-search-page-numbers {
+  display: flex;
+  gap: 6px;
+}
+.material-search-reference-exact .material-search-page-number {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid #dfe6e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #5e7065;
+  font: inherit;
+  cursor: pointer;
+}
+.material-search-reference-exact .material-search-page-number.active {
+  border-color: #397a32;
+  background: #397a32;
+  color: #fff;
+  font-weight: 700;
+}
 @media (max-width: 980px) {
   .inventory-reference-toolbar {
     grid-template-columns: 1fr 1fr;
