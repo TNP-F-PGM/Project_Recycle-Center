@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { AlertTriangle, Boxes, MapPinned, Plus, Search, Warehouse as WarehouseIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
+import { Empty, ErrorBox, Loading, Modal, PageIntro, RefreshButton, Status } from '../../components/ui'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
 import { errorText } from '../../services/api'
@@ -22,6 +22,10 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
   const [typeFilter, setTypeFilter] = useState('all')
   const [gradeFilter, setGradeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [showMinimumManager, setShowMinimumManager] = useState(false)
+  const [minimumScope, setMinimumScope] = useState<'unset' | 'all'>('unset')
+  const [minimumQuery, setMinimumQuery] = useState('')
+  const [pendingMinimumCount, setPendingMinimumCount] = useState(0)
   const [lowOnly, setLowOnly] = useState(false)
   const warehouseRequestID = useRef(crypto.randomUUID())
   const zoneRequestID = useRef(crypto.randomUUID())
@@ -57,6 +61,23 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
     })
     return [...byID.entries()]
   }, [materials.data])
+  const minimumMaterials = useMemo(() => {
+    const byID = new Map<string, InventoryMaterial>()
+    materials.data.forEach((material) => {
+      if (!byID.has(material.materialID)) byID.set(material.materialID, material)
+    })
+    return [...byID.values()]
+  }, [materials.data])
+  const missingMinimum = minimumMaterials.filter((material) => !material.minimumStockConfigured)
+  const minimumNeedle = minimumQuery.trim().toLocaleLowerCase('th')
+  const shownMinimumMaterials = minimumMaterials.filter((material) => {
+    if (minimumScope === 'unset' && material.minimumStockConfigured) return false
+    return !minimumNeedle || [material.materialID, material.materialName, material.materialType?.typeName]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('th')
+      .includes(minimumNeedle)
+  })
 
   async function createWarehouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -117,31 +138,41 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
   }
   async function updateMinimumStock(materialID: string, value: number) {
     if (!Number.isFinite(value) || value <= 0) {
-      setError('เกณฑ์สต็อกขั้นต่ำต้องมากกว่า 0')
-      return
+      setError('เกณฑ์ขั้นต่ำต้องมากกว่า 0')
+      return false
     }
-    setBusy(true)
     setError('')
     try {
       await operationsApi.updateMinimumStock(materialID, value)
       await materials.refresh()
-      notify('บันทึกเกณฑ์สต็อกขั้นต่ำแล้ว')
+      notify('บันทึกเกณฑ์ขั้นต่ำแล้ว')
+      return true
     } catch (cause) {
       setError(errorText(cause))
-    } finally {
-      setBusy(false)
+      return false
     }
   }
   if (warehouses.loading || zones.loading || materials.loading) return <Loading />
 
   if (materialSearch || workspace?.role === 'warehouse') {
     return (
-      <div className="operations-workspace inventory-page inventory-reference-page">
+      <div className="operations-workspace inventory-page inventory-reference-page material-search-reference-exact">
         <PageIntro
           eyebrow={roles[workspace!.role].english}
           title="ค้นหาข้อมูลวัสดุ"
-          description="ค้นหาและตรวจสอบข้อมูลวัสดุ ยอดคงเหลือ เกรด และเกณฑ์ขั้นต่ำ"
+          description="ยอดคงเหลือของวัสดุรีไซเคิลทุกรายการ พร้อมเกณฑ์ขั้นต่ำ"
         >
+          <button
+            className="button secondary"
+            disabled={!minimumMaterials.length}
+            onClick={() => {
+              setMinimumScope(missingMinimum.length > 0 ? 'unset' : 'all')
+              setMinimumQuery('')
+              setShowMinimumManager(true)
+            }}
+          >
+            จัดการเกณฑ์ขั้นต่ำ
+          </button>
           <RefreshButton
             onClick={() => void refresh()}
             busy={warehouses.refreshing || zones.refreshing || materials.refreshing}
@@ -149,6 +180,13 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
         </PageIntro>
 
         <ErrorBox message={error || warehouses.error || zones.error || materials.error} />
+
+        {missingMinimum.length > 0 && (
+          <section className="minimum-stock-warning" role="status">
+            <strong>วัสดุ {missingMinimum.length} ชนิดยังไม่กำหนดเกณฑ์ขั้นต่ำ</strong>
+            <span>ตั้งค่าได้ที่ปุ่ม “จัดการเกณฑ์ขั้นต่ำ” เมื่อพร้อม</span>
+          </section>
+        )}
 
         <section className="panel inventory-reference-filter-panel">
           <div className="inventory-reference-toolbar">
@@ -201,10 +239,10 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
                     <tr key={`${material.materialID}-${material.grade || 'none'}`}>
                       <td><strong>{material.materialID}</strong></td>
                       <td><strong>{material.materialName}</strong></td>
-                      <td>{material.materialType?.typeName || '—'}</td>
-                      <td>{material.grade ? `เกรด ${material.grade}` : '—'}</td>
-                      <td className="numeric"><strong>{number(material.currentQuantity)} {material.unit}</strong></td>
-                      <td className="numeric">{material.minimumStockConfigured ? `${number(material.minStockLevel)} ${material.unit}` : '—'}</td>
+                      <td><span className="material-type-chip">{material.materialType?.typeName || '—'}</span></td>
+                      <td>{material.grade ? <span className={`material-grade-chip grade-${material.grade.toLowerCase()}`}>เกรด {material.grade}</span> : '—'}</td>
+                      <td className="numeric"><strong>{number(material.currentQuantity)} kg</strong></td>
+                      <td className="numeric">{material.minimumStockConfigured ? `${number(material.minStockLevel)} kg` : '—'}</td>
                       <td>
                         {!material.minimumStockConfigured ? (
                           <Status value="pending" label="ยังไม่กำหนดขั้นต่ำ" />
@@ -222,6 +260,89 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
           )}
         </section>
         <p className="inventory-reference-count">แสดง {visibleMaterials.length} รายการจากทั้งหมด {materials.data.length} รายการ</p>
+
+        {showMinimumManager && (
+          <Modal
+            title="จัดการเกณฑ์ขั้นต่ำ"
+            onClose={() => {
+              if (pendingMinimumCount > 0) return
+              setShowMinimumManager(false)
+              setMinimumQuery('')
+            }}
+            busy={pendingMinimumCount > 0}
+            wide
+          >
+            <div className="modal-body minimum-stock-manager reference-minimum-stock-manager">
+              <p>กรอกจำนวนแล้วกดบันทึกทีละวัสดุ เกณฑ์เดียวกันใช้กับทุกเกรด</p>
+
+              <div className="minimum-stock-scope" role="group" aria-label="สถานะการตั้งเกณฑ์">
+                <button
+                  type="button"
+                  className={`button ${minimumScope === 'unset' ? 'primary' : 'secondary'}`}
+                  aria-pressed={minimumScope === 'unset'}
+                  onClick={() => { setMinimumScope('unset'); setMinimumQuery('') }}
+                >
+                  ยังไม่กำหนด ({missingMinimum.length})
+                </button>
+                <button
+                  type="button"
+                  className={`button ${minimumScope === 'all' ? 'primary' : 'secondary'}`}
+                  aria-pressed={minimumScope === 'all'}
+                  onClick={() => { setMinimumScope('all'); setMinimumQuery('') }}
+                >
+                  วัสดุทั้งหมด ({minimumMaterials.length})
+                </button>
+              </div>
+
+              <label className="input-with-icon minimum-stock-search">
+                <Search size={15} />
+                <input
+                  aria-label="ค้นหาวัสดุเพื่อกำหนดเกณฑ์"
+                  placeholder="ค้นหาชื่อวัสดุหรือรหัส..."
+                  value={minimumQuery}
+                  onChange={(event) => setMinimumQuery(event.target.value)}
+                />
+              </label>
+
+              <p className="minimum-stock-summary" role="status">
+                {minimumScope === 'unset'
+                  ? missingMinimum.length === 0
+                    ? 'กำหนดเกณฑ์ครบทุกวัสดุแล้ว'
+                    : `เหลือ ${missingMinimum.length} วัสดุที่ต้องตั้งค่า · แสดง ${shownMinimumMaterials.length} วัสดุ`
+                  : `ตั้งค่าแล้ว ${minimumMaterials.length - missingMinimum.length} · ยังไม่กำหนด ${missingMinimum.length} · แสดง ${shownMinimumMaterials.length} วัสดุ`}
+              </p>
+
+              <div className="minimum-stock-list">
+                {shownMinimumMaterials.map((material) => (
+                  <MinimumStockCard
+                    key={material.materialID}
+                    material={material}
+                    onSave={(value) => updateMinimumStock(material.materialID, value)}
+                    onBusyChange={(saving) => setPendingMinimumCount((count) => Math.max(0, count + (saving ? 1 : -1)))}
+                  />
+                ))}
+                {shownMinimumMaterials.length === 0 && (
+                  <p className="minimum-stock-empty">
+                    {minimumScope === 'unset' && missingMinimum.length === 0
+                      ? 'ไม่มีวัสดุที่ยังไม่กำหนด หากต้องการแก้ค่าเดิม เลือก “วัสดุทั้งหมด”'
+                      : 'ไม่พบวัสดุ ลองค้นหาด้วยชื่อหรือรหัสอื่น'}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={pendingMinimumCount > 0}
+                  onClick={() => { setShowMinimumManager(false); setMinimumQuery('') }}
+                >
+                  ปิด
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     )
   }
@@ -417,5 +538,86 @@ export function InventoryWorkspace({ materialSearch = false }: { materialSearch?
         </div>
       )}
     </div>
+  )
+}
+
+function minimumStockError(value: string) {
+  if (!value.trim()) return 'กรุณากำหนดเกณฑ์ขั้นต่ำ'
+  return !Number.isFinite(Number(value)) || Number(value) <= 0
+    ? 'เกณฑ์ขั้นต่ำต้องมากกว่า 0'
+    : ''
+}
+
+function MinimumStockCard({
+  material,
+  onSave,
+  onBusyChange,
+}: {
+  material: InventoryMaterial
+  onSave: (value: number) => Promise<boolean>
+  onBusyChange: (busy: boolean) => void
+}) {
+  const [value, setValue] = useState(material.minimumStockConfigured ? String(material.minStockLevel) : '')
+  const [touched, setTouched] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const validation = minimumStockError(value)
+  const unchanged = material.minimumStockConfigured && Number(value) === material.minStockLevel
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setTouched(true)
+    setSaveError('')
+    if (validation || unchanged || saving) return
+    setSaving(true)
+    onBusyChange(true)
+    try {
+      const saved = await onSave(Number(value))
+      if (!saved) setSaveError('บันทึกเกณฑ์ขั้นต่ำไม่สำเร็จ')
+    } finally {
+      setSaving(false)
+      onBusyChange(false)
+    }
+  }
+
+  return (
+    <form className="minimum-stock-manager-row reference-minimum-stock-card" noValidate onSubmit={submit}>
+      <div className="minimum-stock-material-info">
+        <strong>{material.materialName}</strong>
+        <small>ประเภท: {material.materialType?.typeName || '—'}</small>
+        {material.minimumStockConfigured ? (
+          <span>เกณฑ์ปัจจุบัน {number(material.minStockLevel)} kg</span>
+        ) : (
+          <Status value="pending" label="ยังไม่กำหนดขั้นต่ำ" />
+        )}
+      </div>
+      <label className="minimum-stock-field">
+        <span>เกณฑ์ขั้นต่ำ (kg)</span>
+        <div className="minimum-stock-input-row">
+          <input
+            name="minimum"
+            type="number"
+            min="0"
+            step="any"
+            value={value}
+            disabled={saving}
+            aria-invalid={touched && !!validation}
+            placeholder="ระบุจำนวน"
+            onChange={(event) => {
+              setValue(event.target.value)
+              setTouched(true)
+              setSaveError('')
+            }}
+            onBlur={() => setTouched(true)}
+          />
+          <button className="button primary compact" disabled={!!validation || unchanged || saving}>
+            {saving ? 'กำลังบันทึก…' : 'บันทึก'}
+          </button>
+        </div>
+        <small className="minimum-stock-field-error" role={(touched && validation) || saveError ? 'alert' : undefined}>
+          {touched && validation ? validation : saveError}
+        </small>
+      </label>
+    </form>
   )
 }

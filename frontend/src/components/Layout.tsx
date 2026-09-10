@@ -34,10 +34,10 @@ import { Brand } from './Brand'
 
 export const warehouseNavigation = [
   { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+  { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ', icon: Search },
   { to: '/receipts', label: 'รับวัสดุเข้าคลัง', icon: PackagePlus },
   { to: '/issues', label: 'เบิกจ่ายวัสดุ', icon: PackageMinus },
   { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
-  { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ', icon: Search },
   { to: '/adjustments', label: 'ตรวจนับและปรับยอด', icon: SlidersHorizontal },
   { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
   { to: '/returns', label: 'รับคืนวัสดุ', icon: ClipboardCheck },
@@ -51,8 +51,8 @@ export const qualityNavigation = [
 
 export const warehouseManagerNavigation = [
   { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
-  { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
   { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ', icon: Search },
+  { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
   { to: '/adjustments', label: 'อนุมัติปรับยอด', icon: ClipboardCheck },
   { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
 ]

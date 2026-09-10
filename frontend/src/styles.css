@@ -4279,6 +4279,139 @@ td strong {
   color: #8c9a91;
   font-size: 10px;
 }
+.material-search-reference-exact .minimum-stock-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  color: #6d5c26;
+  background: #fff9e8;
+  border: 1px solid #ead99e;
+  border-radius: 12px;
+  font-size: 11px;
+}
+.material-search-reference-exact .minimum-stock-warning strong {
+  color: #554717;
+  font-size: 12px;
+}
+.material-search-reference-exact .material-type-chip {
+  display: inline-flex;
+  padding: 4px 8px;
+  color: #64766b;
+  background: #f3f6f4;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.material-search-reference-exact .material-grade-chip {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.material-search-reference-exact .material-grade-chip.grade-a { color: #397553; background: #eaf6ee; }
+.material-search-reference-exact .material-grade-chip.grade-b { color: #8a6e2d; background: #fff4d9; }
+.material-search-reference-exact .material-grade-chip.grade-c { color: #70568a; background: #f0eafa; }
+.material-search-reference-exact .minimum-stock-manager > p {
+  margin: 0 0 14px;
+  color: #7c8b82;
+  font-size: 11px;
+}
+.material-search-reference-exact .minimum-stock-list {
+  display: grid;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.material-search-reference-exact .minimum-stock-manager-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px auto;
+  gap: 14px;
+  align-items: end;
+  padding: 12px;
+  background: #fbfcfb;
+  border: 1px solid #e5ebe6;
+  border-radius: 10px;
+}
+.material-search-reference-exact .minimum-stock-manager-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.material-search-reference-exact .minimum-stock-manager-row small {
+  color: #8b9890;
+}
+.material-search-reference-exact .minimum-stock-manager-row label {
+  display: grid;
+  gap: 5px;
+  color: #68796e;
+  font-size: 10px;
+}
+.material-search-reference-exact .minimum-stock-manager-row input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dfe6e1;
+  border-radius: 7px;
+}
+.material-search-reference-exact .reference-minimum-stock-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 78vh;
+}
+.material-search-reference-exact .minimum-stock-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.material-search-reference-exact .minimum-stock-search {
+  width: 100%;
+}
+.material-search-reference-exact .minimum-stock-search input {
+  min-height: 40px;
+}
+.material-search-reference-exact .minimum-stock-summary {
+  margin: 0;
+  color: #86948b;
+  font-size: 10px;
+}
+.material-search-reference-exact .reference-minimum-stock-card {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  align-items: end;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(35, 53, 48, 0.03);
+}
+.material-search-reference-exact .minimum-stock-material-info > span:not(.status) {
+  color: #8b9890;
+  font-size: 10px;
+}
+.material-search-reference-exact .minimum-stock-field {
+  display: grid;
+  gap: 6px;
+}
+.material-search-reference-exact .minimum-stock-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.material-search-reference-exact .minimum-stock-input-row input {
+  min-width: 0;
+  flex: 1;
+}
+.material-search-reference-exact .minimum-stock-field-error {
+  min-height: 16px;
+  color: #c94b45 !important;
+  font-size: 10px;
+}
+.material-search-reference-exact .minimum-stock-empty {
+  margin: 0;
+  padding: 28px 12px;
+  color: #86948b;
+  text-align: center;
+  font-size: 11px;
+}
 @media (max-width: 980px) {
   .inventory-reference-toolbar {
     grid-template-columns: 1fr 1fr;
@@ -5854,6 +5987,162 @@ td strong {
   .zone-reference-exact .zone-reference-card-actions {
     justify-content: flex-start;
   }
+}
+
+/* Quality daily report — scoped to the quality officer report only */
+.quality-report-page .page-intro {
+  align-items: end;
+}
+.quality-report-page .quality-report-date-field {
+  display: grid;
+  gap: 6px;
+  min-width: 172px;
+  color: #68776e;
+  font-size: 11px;
+  font-weight: 600;
+}
+.quality-report-page .quality-report-date-field input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d9e4dc;
+  border-radius: 10px;
+  color: #24382c;
+  background: #fff;
+}
+.quality-report-page .quality-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.quality-report-page .quality-report-metric {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 122px;
+  padding: 20px;
+  border: 1px solid #dfe8e2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(33, 67, 45, 0.035);
+}
+.quality-report-page .quality-report-metric-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 42px;
+  border-radius: 12px;
+}
+.quality-report-page .quality-report-metric p,
+.quality-report-page .quality-report-metric small {
+  margin: 0;
+  color: #849088;
+}
+.quality-report-page .quality-report-metric p { font-size: 11px; }
+.quality-report-page .quality-report-metric strong {
+  display: block;
+  margin: 4px 0 2px;
+  color: #172b20;
+  font-size: 25px;
+  line-height: 1.15;
+}
+.quality-report-page .quality-report-metric small { font-size: 10px; }
+.quality-report-page .quality-report-metric-passed .quality-report-metric-icon { color: #278052; background: #e8f5ed; }
+.quality-report-page .quality-report-metric-rejected .quality-report-metric-icon { color: #cf5650; background: #fdeceb; }
+.quality-report-page .quality-report-metric-special .quality-report-metric-icon { color: #b97a0c; background: #fff2d5; }
+.quality-report-page .quality-report-metric-total .quality-report-metric-icon { color: #3f6fd5; background: #eaf0fd; }
+.quality-report-page .quality-report-sections {
+  display: grid;
+  gap: 20px;
+}
+.quality-report-page .quality-report-section {
+  padding: 0;
+  overflow: hidden;
+}
+.quality-report-page .quality-report-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 18px;
+  border-bottom: 1px solid #e2e9e4;
+  background: #fbfcfb;
+}
+.quality-report-page .quality-report-section > header > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.quality-report-page .quality-report-section h2 {
+  margin: 0;
+  color: #25382d;
+  font-size: 14px;
+}
+.quality-report-page .quality-report-section > header small {
+  color: #849088;
+  font-size: 10px;
+}
+.quality-report-page .quality-report-section-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.quality-report-page .quality-report-section-passed .quality-report-section-mark { background: #37a36a; }
+.quality-report-page .quality-report-section-passed h2 { color: #27784f; }
+.quality-report-page .quality-report-section-special .quality-report-section-mark { background: #d89a24; }
+.quality-report-page .quality-report-section-special h2 { color: #a56b0c; }
+.quality-report-page .quality-report-section-rejected .quality-report-section-mark { background: #d45d57; }
+.quality-report-page .quality-report-section-rejected h2 { color: #bd4742; }
+.quality-report-page .quality-report-table-scroll-paginated {
+  min-height: 590px;
+}
+.quality-report-page .quality-report-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+.quality-report-page .quality-report-table th {
+  padding: 12px 14px;
+  color: #75827a;
+  background: #f8faf8;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.quality-report-page .quality-report-table td {
+  padding: 13px 14px;
+  border-top: 1px solid #edf1ee;
+  color: #34483b;
+  font-size: 11px;
+  vertical-align: middle;
+}
+.quality-report-page .quality-report-table td strong {
+  color: #20372a;
+  font-weight: 600;
+}
+.quality-report-page .quality-report-table td small {
+  display: block;
+  margin-top: 2px;
+  color: #87948c;
+  font-size: 9px;
+}
+.quality-report-page .quality-report-section-empty,
+.quality-report-page .quality-report-empty {
+  padding: 30px 20px;
+  color: #849088;
+  text-align: center;
+  font-size: 11px;
+}
+@media (max-width: 1180px) {
+  .quality-report-page .quality-report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .quality-report-page .page-intro { align-items: stretch; }
+  .quality-report-page .quality-report-date-field { width: 100%; }
+  .quality-report-page .quality-report-metrics { grid-template-columns: 1fr; }
+  .quality-report-page .quality-report-metric { min-height: auto; }
 }
 
 @media print {

@@ -12,10 +12,10 @@ describe('warehouse navigation', () => {
 
     expect(navigation.map(({ to, label }) => ({ to, label }))).toEqual([
       { to: '/', label: 'ภาพรวม' },
+      { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ' },
       { to: '/receipts', label: 'รับวัสดุเข้าคลัง' },
       { to: '/issues', label: 'เบิกจ่ายวัสดุ' },
       { to: '/inventory', label: 'คลังวัสดุ' },
-      { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ' },
       { to: '/adjustments', label: 'ตรวจนับและปรับยอด' },
       { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว' },
       { to: '/returns', label: 'รับคืนวัสดุ' },
@@ -48,8 +48,8 @@ describe('warehouse navigation', () => {
 
     expect(navigation.map(({ to }) => to)).toEqual([
       '/',
-      '/inventory',
       '/material-search',
+      '/inventory',
       '/adjustments',
       '/stock-history',
     ])
