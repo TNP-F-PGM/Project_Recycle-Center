@@ -322,7 +322,6 @@ export function ReturnsWorkspace() {
     setError('')
     try {
       await api('/return-records', 'POST', {
-        returnID: `RET-${Date.now()}`,
         returnQuantity: Number(form.get('quantity')),
         processedBy: workspace!.employeeId,
         warehouseID: form.get('warehouseID'),

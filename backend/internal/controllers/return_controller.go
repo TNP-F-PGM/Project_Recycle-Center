@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,6 +12,31 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// nextReturnID หาเลขรับคืนล่าสุดในตาราง return_records แล้ว +1
+// รูปแบบ: RET-0001, RET-0002, ... (เลข 4 หลัก เรียงตามลำดับ ไม่มั่ว)
+// กรองเฉพาะ ID ที่เป็นรูปแบบเลขล้วน เพื่อไม่ให้ ID เก่าแบบ timestamp มากวนลำดับ
+func nextReturnID(tx *gorm.DB) (string, error) {
+	var last string
+	err := tx.Raw(`
+		SELECT return_id FROM return_records
+		WHERE return_id ~ '^RET-[0-9]+$'
+		ORDER BY return_id DESC
+		LIMIT 1
+	`).Scan(&last).Error
+	if err != nil {
+		return "", err
+	}
+
+	next := 1
+	if last != "" {
+		numberPart := strings.TrimPrefix(last, "RET-")
+		if n, convErr := strconv.Atoi(numberPart); convErr == nil {
+			next = n + 1
+		}
+	}
+	return fmt.Sprintf("RET-%04d", next), nil
+}
 
 func complaintDetails(db *gorm.DB) *gorm.DB {
 	return db.Preload("PurchaseOrder.Factory").Preload("Factory").Preload("AuditTrail")
@@ -194,9 +221,6 @@ func (h *Handler) CreateReturnRecord(c *gin.Context) {
 		return
 	}
 	fields := map[string]string{}
-	if !nonBlank(request.ReturnID) {
-		fields["returnID"] = "กรุณาระบุรหัสการรับคืน"
-	}
 	if request.ReturnQuantity <= 0 {
 		fields["returnQuantity"] = "จำนวนรับคืนต้องมากกว่า 0"
 	}
@@ -235,6 +259,13 @@ func (h *Handler) CreateReturnRecord(c *gin.Context) {
 		}
 		if complaint.Status != "approved" {
 			return newOperationError(http.StatusConflict, "complaint_not_approved", "รับคืนได้เฉพาะคำร้องเรียนที่อนุมัติแล้ว", nil)
+		}
+		if row.ReturnID == "" {
+			generatedID, genErr := nextReturnID(tx)
+			if genErr != nil {
+				return genErr
+			}
+			row.ReturnID = generatedID
 		}
 		return tx.Create(&row).Error
 	})
