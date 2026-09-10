@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Bell,
+  BarChart3,
   CheckCircle2,
   ChevronRight,
   CircleHelp,
@@ -36,9 +37,24 @@ export const warehouseNavigation = [
   { to: '/receipts', label: 'รับวัสดุเข้าคลัง', icon: PackagePlus },
   { to: '/issues', label: 'เบิกจ่ายวัสดุ', icon: PackageMinus },
   { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
+  { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ', icon: Search },
   { to: '/adjustments', label: 'ตรวจนับและปรับยอด', icon: SlidersHorizontal },
   { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
   { to: '/returns', label: 'รับคืนวัสดุ', icon: ClipboardCheck },
+]
+
+export const qualityNavigation = [
+  { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+  { to: '/quality', label: 'คัดแยกคุณภาพ', icon: ScanLine },
+  { to: '/quality/report', label: 'รายงานประจำวัน', icon: BarChart3 },
+]
+
+export const warehouseManagerNavigation = [
+  { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
+  { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
+  { to: '/material-search', label: 'ค้นหาข้อมูลวัสดุ', icon: Search },
+  { to: '/adjustments', label: 'อนุมัติปรับยอด', icon: ClipboardCheck },
+  { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
 ]
 
 export function Layout() {
@@ -76,11 +92,7 @@ export function Layout() {
             { to: '/deliveries', label: 'ประวัติการขนส่ง', icon: ClipboardList },
           ]
         : role === 'quality'
-          ? [
-              { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
-              { to: '/quality', label: 'คัดแยกคุณภาพ', icon: ScanLine },
-              { to: '/quality/history', label: 'ประวัติการประเมิน', icon: History },
-            ]
+          ? qualityNavigation
           : role === 'customer_service'
             ? [
                 { to: '/', label: 'ภาพรวมงานบริการ', icon: LayoutDashboard },
@@ -102,12 +114,7 @@ export function Layout() {
                 : role === 'warehouse'
                   ? warehouseNavigation
                   : role === 'warehouse_manager'
-                    ? [
-                        { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
-                        { to: '/inventory', label: 'คลังวัสดุ', icon: Boxes },
-                        { to: '/adjustments', label: 'อนุมัติปรับยอด', icon: ClipboardCheck },
-                        { to: '/stock-history', label: 'ประวัติการเคลื่อนไหว', icon: History },
-                      ]
+                    ? warehouseManagerNavigation
                     : [
                         { to: '/', label: 'ภาพรวม', icon: LayoutDashboard },
                         { to: '/deliveries', label: 'คำขอรับ–ส่งวัสดุ', icon: ClipboardList },

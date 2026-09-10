@@ -340,9 +340,6 @@ func (h *Handler) TransferScrapPurchase(c *gin.Context) {
 		return
 	}
 	fields := make(map[string]string)
-	if request.Quantity <= 0 {
-		fields["quantity"] = "จำนวนต้องมากกว่า 0"
-	}
 	if !nonBlank(request.AssessedBy) {
 		fields["assessedBy"] = "กรุณาระบุผู้ประเมิน"
 	}
@@ -378,7 +375,7 @@ func (h *Handler) TransferScrapPurchase(c *gin.Context) {
 		return
 	}
 	pending := models.PendingWarehouseItem{
-		Quantity:        request.Quantity,
+		Quantity:        purchase.Weight,
 		AssessedGrade:   purchase.Assessment.AssessedGrade,
 		AssessedBy:      strings.TrimSpace(request.AssessedBy),
 		TransferredDate: time.Now().UTC(),

@@ -1,43 +1,121 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { CheckCircle2, ClipboardPlus, Plus, ScanLine } from 'lucide-react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  History,
+  PackageSearch,
+  Plus,
+  Search,
+  UserRoundCheck,
+  XCircle,
+} from 'lucide-react'
 import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
+import { QualityHistory } from './QualityHistory'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
-import { api, errorText } from '../../services/api'
-import type { AssessmentBatch, QualityAssessment } from '../../types'
-import { dateLabel, number } from '../../utils/format'
+import { errorText } from '../../services/api'
+import { operationsApi } from '../../services/operationsApi'
+import type { AssessmentBatch, AssessmentSellerOption } from '../../types'
+import { number, today } from '../../utils/format'
+import {
+  buildQualityDailyReport,
+  canOpenAssessmentBatch,
+  cleanlinessLabel,
+  qualityResultChoices,
+  qualityResultLabel,
+  validateAssessmentInput,
+} from '../../utils/operations'
 
-export function QualityWorkspace({ historyOnly = false }: { historyOnly?: boolean }) {
+export function QualityWorkspace({ initialTab = 'form' }: { initialTab?: 'form' | 'history' }) {
   const { data, workspace, notify } = useApp()
+  const [activeTab, setActiveTab] = useState<'form' | 'history'>(initialTab)
   const batches = useApiList<AssessmentBatch>('/assessment-batches')
-  const assessments = useApiList<QualityAssessment>('/quality-assessments')
   const [selectedID, setSelectedID] = useState('')
-  const [sellerCode, setSellerCode] = useState('DEMO-SELLER-001')
+  const [sellerQuery, setSellerQuery] = useState('')
+  const [seller, setSeller] = useState<AssessmentSellerOption | null>(null)
+  const [sellerOptions, setSellerOptions] = useState<AssessmentSellerOption[]>([])
+  const [searching, setSearching] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [result, setResult] = useState('passed')
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
   const createRequestID = useRef(crypto.randomUUID())
-  const openBatches = useMemo(
-    () => batches.data.filter((b) => b.status === 'in_progress'),
-    [batches.data],
+
+  const employeeBatches = useMemo(
+    () => batches.data.filter((batch) => batch.employeeID === workspace?.employeeId),
+    [batches.data, workspace?.employeeId],
   )
+  const openBatches = useMemo(
+    () => employeeBatches.filter((batch) => batch.status === 'in_progress'),
+    [employeeBatches],
+  )
+  const employeeAssessments = useMemo(
+    () => employeeBatches.flatMap((batch) => batch.assessments || []),
+    [employeeBatches],
+  )
+  const todayReport = useMemo(
+    () => buildQualityDailyReport(employeeAssessments, today()),
+    [employeeAssessments],
+  )
+  const recentAssessments = useMemo(
+    () => [...employeeAssessments].sort((a, b) => b.assessedAt.localeCompare(a.assessedAt)).slice(0, 4),
+    [employeeAssessments],
+  )
+
   useEffect(() => {
     if (!selectedID && openBatches[0]) setSelectedID(openBatches[0].assessmentBatchID)
   }, [openBatches, selectedID])
-  const selected = batches.data.find((b) => b.assessmentBatchID === selectedID)
+
+  useEffect(() => {
+    const query = sellerQuery.trim()
+    if (seller?.name === sellerQuery || seller?.sellerCode === sellerQuery) return
+    setSeller(null)
+    if (query.length < 2) {
+      setSellerOptions([])
+      return
+    }
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setSearching(true)
+      try {
+        const options = await operationsApi.searchAssessmentSellers(query)
+        if (!controller.signal.aborted) setSellerOptions(options)
+      } catch (cause) {
+        if (!controller.signal.aborted) setActionError(errorText(cause))
+      } finally {
+        if (!controller.signal.aborted) setSearching(false)
+      }
+    }, 250)
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [sellerQuery, seller])
+
+  const selected = employeeBatches.find((batch) => batch.assessmentBatchID === selectedID)
 
   async function createBatch(event: FormEvent) {
     event.preventDefault()
+    if (!seller || !canOpenAssessmentBatch({ sellerCode: seller.sellerCode, employeeID: workspace!.employeeId })) {
+      setActionError('กรุณาค้นหาและเลือกผู้ขายจากรายการ')
+      return
+    }
     setBusy(true)
     setActionError('')
     try {
-      const created = await api<AssessmentBatch>('/assessment-batches', 'POST', {
-        sellerCode,
+      const created = await operationsApi.createAssessmentBatch({
+        sellerCode: seller.sellerCode,
         employeeID: workspace!.employeeId,
         requestID: createRequestID.current,
       })
       createRequestID.current = crypto.randomUUID()
       await batches.refresh()
       setSelectedID(created.assessmentBatchID)
+      setCreateOpen(false)
+      setSeller(null)
+      setSellerQuery('')
       notify('สร้างชุดประเมินแล้ว')
     } catch (cause) {
       setActionError(errorText(cause))
@@ -50,19 +128,27 @@ export function QualityWorkspace({ historyOnly = false }: { historyOnly?: boolea
     event.preventDefault()
     const target = event.currentTarget
     const form = new FormData(target)
+    const quantity = Number(form.get('quantity'))
+    const detail = String(form.get('detail') || '')
+    const validation = validateAssessmentInput({ quantity, result, detail })
+    if (validation) {
+      setActionError(validation)
+      return
+    }
     setBusy(true)
     setActionError('')
     try {
-      await api(`/assessment-batches/${encodeURIComponent(selectedID)}/assessments`, 'POST', {
-        materialID: form.get('materialID'),
-        assessedQuantity: Number(form.get('quantity')),
-        assessedGrade: form.get('grade'),
-        cleanlinessLevel: form.get('cleanliness'),
-        result: form.get('result'),
-        detail: form.get('detail') || null,
+      await operationsApi.addAssessment(selectedID, {
+        materialID: String(form.get('materialID')),
+        assessedQuantity: quantity,
+        assessedGrade: String(form.get('grade')),
+        cleanlinessLevel: String(form.get('cleanliness')),
+        result,
+        detail: detail.trim() || null,
       })
       target.reset()
-      await Promise.all([batches.refresh(), assessments.refresh()])
+      setResult('passed')
+      await batches.refresh()
       notify('บันทึกผลการประเมินแล้ว')
     } catch (cause) {
       setActionError(errorText(cause))
@@ -72,10 +158,14 @@ export function QualityWorkspace({ historyOnly = false }: { historyOnly?: boolea
   }
 
   async function completeBatch() {
+    if (!selected?.assessments?.length) {
+      setActionError('ต้องมีผลประเมินอย่างน้อย 1 รายการก่อนจบชุด')
+      return
+    }
     setBusy(true)
     setActionError('')
     try {
-      await api(`/assessment-batches/${encodeURIComponent(selectedID)}/complete`, 'PATCH')
+      await operationsApi.completeAssessmentBatch(selectedID)
       await batches.refresh()
       setSelectedID('')
       notify('ยืนยันการประเมินเสร็จแล้ว')
@@ -86,243 +176,183 @@ export function QualityWorkspace({ historyOnly = false }: { historyOnly?: boolea
     }
   }
 
-  if (batches.loading || assessments.loading) return <Loading />
-  const pageError = actionError || batches.error || assessments.error
-  if (historyOnly)
-    return (
-      <AssessmentHistory
-        rows={assessments.data}
-        error={pageError}
-        refresh={() => Promise.all([batches.refresh(), assessments.refresh()])}
-        busy={batches.refreshing || assessments.refreshing}
-      />
-    )
+  if (batches.loading) return <Loading />
 
   return (
-    <>
+    <div className="operations-workspace quality-entry quality-clean-page">
       <PageIntro
         eyebrow={roles.quality.english}
-        title="คัดแยกและประเมินคุณภาพ"
-        description="เปิดชุดประเมิน บันทึกผลทีละวัสดุ และยืนยันเมื่อครบ"
+        title="คัดแยกคุณภาพ"
+        description="เลือกชุดประเมิน แล้วบันทึกผลวัสดุทีละรายการ"
       >
-        <RefreshButton
-          onClick={() => void Promise.all([batches.refresh(), assessments.refresh()])}
-          busy={batches.refreshing || assessments.refreshing}
-        />
+        <RefreshButton onClick={() => void batches.refresh()} busy={batches.refreshing} />
       </PageIntro>
-      <ErrorBox message={pageError} />
-      <div className="operations-split">
-        <section className="panel operation-form-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>
-                <ClipboardPlus size={17} /> ชุดประเมิน
-              </h2>
-              <p>หนึ่งชุดใช้กับผู้ขายหนึ่งราย</p>
-            </div>
-          </div>
-          <form className="operation-form" onSubmit={createBatch}>
-            <label className="field">
-              รหัสผู้ขาย
-              <input
-                value={sellerCode}
-                onChange={(e) => setSellerCode(e.target.value)}
-                placeholder="เช่น DEMO-SELLER-001"
-                required
-              />
-            </label>
-            <button className="button primary" disabled={busy || !sellerCode.trim()}>
-              <Plus size={16} /> เปิดชุดประเมินใหม่
-            </button>
-          </form>
-          <div className="operation-list-label">ชุดที่กำลังประเมิน</div>
-          <div className="selection-list">
-            {openBatches.map((batch) => (
-              <button
-                key={batch.assessmentBatchID}
-                className={selectedID === batch.assessmentBatchID ? 'selected' : ''}
-                aria-pressed={selectedID === batch.assessmentBatchID}
-                onClick={() => setSelectedID(batch.assessmentBatchID)}
-              >
-                <span>
-                  <strong>{batch.assessmentBatchID}</strong>
-                  <small>
-                    {batch.sellerCode} · {batch.assessments?.length || 0} รายการ
-                  </small>
-                </span>
-                <Status value={batch.status} />
-              </button>
-            ))}
-            {!openBatches.length && <p className="list-empty">ยังไม่มีชุดที่กำลังประเมิน</p>}
-          </div>
-        </section>
-        <section className="panel operation-form-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>
-                <ScanLine size={17} /> บันทึกผลคัดแยก
-              </h2>
-              <p>
-                {selected
-                  ? `ชุด ${selected.assessmentBatchID} · ${selected.sellerCode}`
-                  : 'เลือกหรือเปิดชุดประเมินก่อน'}
-              </p>
-            </div>
-          </div>
-          {selected ? (
-            <form
-              key={selected.assessmentBatchID}
-              className="operation-form"
-              onSubmit={addAssessment}
-            >
-              <div className="form-grid">
-                <label className="field">
-                  วัสดุ
-                  <select name="materialID" required>
-                    {data.materials.map((m) => (
-                      <option key={m.material_id} value={m.material_id}>
-                        {m.material_name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  น้ำหนัก (กก.)
-                  <input name="quantity" type="number" min="0.01" step="0.01" required />
-                </label>
-                <label className="field">
-                  เกรด
-                  <select name="grade" defaultValue="A">
-                    <option>A</option>
-                    <option>B</option>
-                    <option>C</option>
-                  </select>
-                </label>
-                <label className="field">
-                  ความสะอาด
-                  <select name="cleanliness" defaultValue="clean">
-                    <option value="clean">สะอาด</option>
-                    <option value="minor_contamination">ปนเปื้อนเล็กน้อย</option>
-                    <option value="contaminated">ปนเปื้อน</option>
-                  </select>
-                </label>
-                <label className="field">
-                  ผลประเมิน
-                  <select name="result" defaultValue="passed">
-                    <option value="passed">ผ่านเกณฑ์</option>
-                    <option value="special_storage">จัดเก็บพิเศษ</option>
-                    <option value="rejected">ไม่ผ่าน</option>
-                  </select>
-                </label>
+      <ErrorBox message={actionError || batches.error} />
+
+      <div className="quality-workspace-tabs" role="tablist" aria-label="งานคัดแยกคุณภาพ">
+        <button type="button" role="tab" aria-selected={activeTab === 'form'} className={activeTab === 'form' ? 'active' : ''} onClick={() => setActiveTab('form')}>บันทึกผลประเมิน</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'history'} className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>ประวัติการประเมินทั้งหมด</button>
+      </div>
+
+      {activeTab === 'history' ? (
+        <QualityHistory embedded />
+      ) : (
+      <div className="quality-clean-grid">
+        <section className="panel quality-form-card">
+          <div className="quality-batch-picker">
+            <div className="quality-section-heading">
+              <div>
+                <h2><ClipboardCheck size={17} /> ชุดประเมินที่กำลังทำงาน</h2>
+                <p>เลือกชุดที่เปิดอยู่ หรือสร้างชุดใหม่เมื่อเริ่มประเมินผู้ขายรายใหม่</p>
               </div>
-              <label className="field">
-                รายละเอียดเพิ่มเติม
-                <textarea
-                  name="detail"
-                  rows={3}
-                  placeholder="ระบุสิ่งปนเปื้อนหรือข้อสังเกต (ถ้ามี)"
-                />
+              {selected && <Status value={selected.status} label="กำลังประเมิน" />}
+            </div>
+
+            <div className="quality-batch-row">
+              <label className="field quality-batch-select">ชุดประเมิน
+                <select value={selectedID} onChange={(event) => { setSelectedID(event.target.value); setActionError('') }}>
+                  <option value="">เลือกชุดประเมินที่ยังไม่ปิด</option>
+                  {openBatches.map((batch) => (
+                    <option key={batch.assessmentBatchID} value={batch.assessmentBatchID}>
+                      {batch.assessmentBatchID} · ผู้ขาย {batch.sellerCode}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <div className="form-actions">
-                <button className="button primary" disabled={busy}>
-                  <Plus size={16} /> เพิ่มผลประเมิน
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  disabled={busy || !selected.assessments?.length}
-                  onClick={() => void completeBatch()}
-                >
-                  <CheckCircle2 size={16} /> ยืนยันเสร็จ
+              <button className="button secondary quality-create-toggle" type="button" onClick={() => setCreateOpen((value) => !value)}>
+                <Plus size={15} /> สร้างชุดใหม่
+              </button>
+            </div>
+
+            {selected && (
+              <div className="quality-batch-meta">
+                <span><strong>{selected.sellerCode}</strong><small>ผู้ขาย</small></span>
+                <span><strong>{selected.assessments?.length || 0}</strong><small>รายการที่บันทึก</small></span>
+                <button className="button secondary compact" type="button" disabled={busy || !selected.assessments?.length} onClick={() => void completeBatch()}>
+                  <CheckCircle2 size={14} /> จบชุดประเมิน
                 </button>
               </div>
-            </form>
-          ) : (
-            <Empty
-              title="เลือกชุดประเมิน"
-              message="สร้างชุดใหม่หรือเลือกชุดที่กำลังทำจากด้านซ้าย"
-            />
+            )}
+
+            {createOpen && (
+              <form className="quality-create-panel" onSubmit={createBatch}>
+                <div className="quality-create-title"><UserRoundCheck size={16} /> สร้างชุดประเมินใหม่</div>
+                <label className="field">ค้นหาผู้ขาย
+                  <span className="input-with-icon"><Search size={16} /><input value={sellerQuery} onChange={(event) => setSellerQuery(event.target.value)} placeholder="พิมพ์ชื่อหรือรหัสอย่างน้อย 2 ตัวอักษร" autoComplete="off" /></span>
+                </label>
+                {searching && <p className="field-hint">กำลังค้นหา…</p>}
+                {sellerOptions.length > 0 && !seller && (
+                  <div className="quality-seller-options">
+                    {sellerOptions.map((option) => (
+                      <button type="button" key={option.sellerCode} onClick={() => { setSeller(option); setSellerQuery(option.name); setSellerOptions([]); setActionError('') }}>
+                        <span><strong>{option.name}</strong><small>{option.sellerCode}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {seller && (
+                  <div className="quality-selected-seller">
+                    <UserRoundCheck size={18} />
+                    <span><strong>{seller.name}</strong><small>{seller.sellerCode}</small></span>
+                  </div>
+                )}
+                <div className="quality-create-actions">
+                  <button className="button secondary" type="button" onClick={() => { setCreateOpen(false); setSeller(null); setSellerQuery(''); setSellerOptions([]) }}>ยกเลิก</button>
+                  <button className="button primary" disabled={busy || !seller}>สร้างชุดประเมิน</button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          <div className="quality-form-body">
+            <div className="quality-section-heading compact-heading">
+              <div><h2>แบบฟอร์มประเมินคุณภาพ</h2><p>{selected ? `กำลังบันทึกใน ${selected.assessmentBatchID}` : 'เลือกชุดประเมินก่อนเริ่มบันทึก'}</p></div>
+            </div>
+
+            {selected ? (
+              <form key={selected.assessmentBatchID} onSubmit={addAssessment} className="quality-clean-form">
+                <label className="field quality-material-field">วัสดุ
+                  <select name="materialID" required>
+                    <option value="">เลือกวัสดุที่ต้องการประเมิน</option>
+                    {data.materials.map((material) => <option key={material.material_id} value={material.material_id}>{material.material_name}</option>)}
+                  </select>
+                </label>
+
+                <div className="quality-inline-fields">
+                  <label className="field">เกรด<select name="grade" defaultValue="A"><option value="A">เกรด A</option><option value="B">เกรด B</option><option value="C">เกรด C</option></select></label>
+                  <label className="field">ความสะอาด<select name="cleanliness" defaultValue="clean"><option value="clean">สะอาด</option><option value="slightly_dirty">สกปรกเล็กน้อย</option><option value="dirty">สกปรก</option></select></label>
+                  <label className="field">น้ำหนัก (กก.)<input name="quantity" type="number" min="0.01" step="0.01" placeholder="0.00" required /></label>
+                </div>
+
+                <fieldset className="quality-result-fieldset">
+                  <legend>ผลการประเมิน</legend>
+                  <div className="quality-result-grid">
+                    {qualityResultChoices.map((choice) => {
+                      const Icon = choice.value === 'passed' ? CheckCircle2 : choice.value === 'rejected' ? XCircle : AlertCircle
+                      return (
+                        <button key={choice.value} type="button" className={`quality-result-card ${choice.value} ${result === choice.value ? 'active' : ''}`} onClick={() => setResult(choice.value)} aria-pressed={result === choice.value}>
+                          <Icon size={17} /><span>{choice.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+
+                <label className="field">เหตุผล/รายละเอียดเพิ่มเติม {result !== 'passed' && <span className="required-mark">*</span>}
+                  <textarea name="detail" rows={3} required={result !== 'passed'} placeholder={result === 'passed' ? 'ระบุข้อเสนอแนะเพิ่มเติม (ถ้ามี)' : 'กรุณาระบุเหตุผลที่ปฏิเสธหรือแยกเก็บ'} />
+                </label>
+
+                <div className="quality-form-footer">
+                  <button className="button secondary" type="reset" onClick={() => setResult('passed')}>ล้างข้อมูล</button>
+                  <button className="button success" disabled={busy}><Plus size={16} /> บันทึกผลประเมิน</button>
+                </div>
+              </form>
+            ) : <Empty title="ยังไม่ได้เลือกชุดประเมิน" message="เลือกชุดที่กำลังดำเนินการ หรือสร้างชุดใหม่ด้านบน" />}
+          </div>
+
+          {selected && (
+            <details className="quality-batch-items">
+              <summary><span><PackageSearch size={16} /> รายการในชุดนี้ <b>{selected.assessments?.length || 0}</b></span><ChevronDown size={16} /></summary>
+              <AssessmentTable rows={selected.assessments || []} />
+            </details>
           )}
         </section>
-      </div>
-      {selected && (
-        <section className="panel spaced">
-          <div className="panel-heading">
-            <div>
-              <h2>รายการในชุดนี้</h2>
-              <p>{selected.assessments?.length || 0} รายการ</p>
+
+        <aside className="quality-side-column">
+          <section className="panel quality-summary-card">
+            <div className="quality-side-title"><ClipboardCheck size={17} /> สรุปผลการประเมินวันนี้</div>
+            <div className="quality-summary-list">
+              <SummaryRow icon={<CheckCircle2 size={17} />} label="ผ่าน" value={todayReport.passed} tone="passed" />
+              <SummaryRow icon={<AlertCircle size={17} />} label="แยกเก็บ" value={todayReport.specialStorage} tone="special" />
+              <SummaryRow icon={<XCircle size={17} />} label="ปฏิเสธ" value={todayReport.rejected} tone="rejected" />
             </div>
-          </div>
-          <AssessmentTable rows={selected.assessments || []} />
-        </section>
+          </section>
+
+          <section className="panel quality-recent-card">
+            <div className="quality-side-title"><History size={17} /> รายการประเมินล่าสุด</div>
+            {!recentAssessments.length ? <div className="quality-side-empty">ยังไม่มีการประเมินในวันนี้</div> : (
+              <div className="quality-recent-list">
+                {recentAssessments.map((row) => (
+                  <div key={row.assessmentID} className="quality-recent-item">
+                    <div><strong>{row.material?.materialName || row.materialID}</strong><small>{number(row.assessedQuantity)} กก. · เกรด {row.assessedGrade}</small></div>
+                    <Status value={row.result} label={qualityResultLabel(row.result)} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
       )}
-    </>
-  )
-}
-
-function AssessmentHistory({
-  rows,
-  error,
-  refresh,
-  busy,
-}: {
-  rows: QualityAssessment[]
-  error: string
-  refresh: () => Promise<unknown>
-  busy: boolean
-}) {
-  return (
-    <>
-      <PageIntro
-        eyebrow={roles.quality.english}
-        title="ประวัติการประเมิน"
-        description="ผลคัดแยกวัสดุทั้งหมดที่บันทึกไว้"
-      >
-        <RefreshButton onClick={() => void refresh()} busy={busy} />
-      </PageIntro>
-      <ErrorBox message={error} />
-      <section className="panel">
-        <AssessmentTable rows={rows} />
-      </section>
-    </>
-  )
-}
-
-function AssessmentTable({ rows }: { rows: QualityAssessment[] }) {
-  if (!rows.length)
-    return <Empty title="ยังไม่มีผลการประเมิน" message="ผลที่บันทึกแล้วจะแสดงที่นี่" />
-  return (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>รหัส / วัสดุ</th>
-            <th>น้ำหนัก</th>
-            <th>เกรด</th>
-            <th>ความสะอาด</th>
-            <th>วันที่</th>
-            <th>ผล</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.assessmentID}>
-              <td>
-                <strong>QA-{row.assessmentID}</strong>
-                <br />
-                <small>{row.material?.materialName || row.materialID}</small>
-              </td>
-              <td>{number(row.assessedQuantity)} กก.</td>
-              <td>{row.assessedGrade}</td>
-              <td>{row.cleanlinessLevel}</td>
-              <td>{dateLabel(row.assessedAt)}</td>
-              <td>
-                <Status value={row.result} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
+}
+
+function SummaryRow({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: string }) {
+  return <div className={`quality-summary-row ${tone}`}><span>{icon}<b>{label}</b></span><strong>{number(value)}</strong></div>
+}
+
+function AssessmentTable({ rows }: { rows: AssessmentBatch['assessments'] }) {
+  if (!rows?.length) return <Empty title="ยังไม่มีผลการประเมิน" message="รายการที่บันทึกจะแสดงที่นี่" />
+  return <div className="table-scroll"><table><thead><tr><th>#</th><th>วัสดุ</th><th className="numeric">น้ำหนัก</th><th>เกรด</th><th>ความสะอาด</th><th>ผล</th><th>เหตุผล</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.assessmentID}><td>{index + 1}</td><td><strong>{row.material?.materialName || row.materialID}</strong></td><td className="numeric">{number(row.assessedQuantity)} กก.</td><td>{row.assessedGrade}</td><td>{cleanlinessLabel(row.cleanlinessLevel)}</td><td><Status value={row.result} label={qualityResultLabel(row.result)} /></td><td>{row.detail || '—'}</td></tr>)}</tbody></table></div>
 }

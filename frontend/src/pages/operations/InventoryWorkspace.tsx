@@ -1,20 +1,28 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { Boxes, Plus, Warehouse as WarehouseIcon } from 'lucide-react'
+import { AlertTriangle, Boxes, MapPinned, Plus, Search, Warehouse as WarehouseIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
 import { roles, useApp } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
-import { api, errorText } from '../../services/api'
+import { errorText } from '../../services/api'
+import { operationsApi } from '../../services/operationsApi'
 import type { InventoryMaterial, StorageZone, Warehouse } from '../../types'
 import { number } from '../../utils/format'
+import { capacityPercent } from '../../utils/operations'
 
-export function InventoryWorkspace() {
+export function InventoryWorkspace({ materialSearch = false }: { materialSearch?: boolean } = {}) {
   const { workspace, notify } = useApp()
   const warehouses = useApiList<Warehouse>('/warehouses')
   const zones = useApiList<StorageZone>('/storage-zones')
-  const materials = useApiList<InventoryMaterial>('/inventory/materials')
+  const materials = useApiList<InventoryMaterial>('/inventory/materials?include=stock')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showCreate, setShowCreate] = useState<'warehouse' | 'zone' | ''>('')
+  const [query, setQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [gradeFilter, setGradeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [lowOnly, setLowOnly] = useState(false)
   const warehouseRequestID = useRef(crypto.randomUUID())
   const zoneRequestID = useRef(crypto.randomUUID())
   const canManage = workspace?.role === 'warehouse_manager'
@@ -29,6 +37,26 @@ export function InventoryWorkspace() {
       })),
     [warehouses.data, zones.data],
   )
+  const visibleMaterials = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('th')
+    return materials.data.filter((material) => {
+      if (lowOnly && !material.belowMin) return false
+      if (typeFilter !== 'all' && String(material.materialTypeID) !== typeFilter) return false
+      if (gradeFilter !== 'all' && material.grade !== gradeFilter) return false
+      if (statusFilter === 'below' && !material.belowMin) return false
+      if (statusFilter === 'normal' && (material.belowMin || !material.minimumStockConfigured)) return false
+      if (statusFilter === 'unset' && material.minimumStockConfigured) return false
+      return !needle || [material.materialID, material.materialName, material.materialType?.typeName, material.grade].filter(Boolean).join(' ').toLocaleLowerCase('th').includes(needle)
+    })
+  }, [gradeFilter, lowOnly, materials.data, query, statusFilter, typeFilter])
+
+  const materialTypes = useMemo(() => {
+    const byID = new Map<string, string>()
+    materials.data.forEach((material) => {
+      byID.set(String(material.materialTypeID), material.materialType?.typeName || String(material.materialTypeID))
+    })
+    return [...byID.entries()]
+  }, [materials.data])
 
   async function createWarehouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -37,7 +65,7 @@ export function InventoryWorkspace() {
     setBusy(true)
     setError('')
     try {
-      await api('/warehouses', 'POST', {
+      await operationsApi.createWarehouse({
         totalCapacity: Number(form.get('capacity')),
         minStock: Number(form.get('minStock')),
         unit: 'kg',
@@ -59,17 +87,21 @@ export function InventoryWorkspace() {
     const target = event.currentTarget
     const form = new FormData(target)
     const material = materials.data.find((m) => m.materialID === form.get('materialID'))
+    if (!material) {
+      setError('กรุณาเลือกวัสดุ')
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await api('/storage-zones', 'POST', {
-        zoneName: form.get('zoneName'),
+      await operationsApi.createZone({
+        zoneName: String(form.get('zoneName')),
         capacity: Number(form.get('capacity')),
-        supportedGrade: form.get('grade'),
+        supportedGrade: String(form.get('grade')),
         stockStatus: 'available',
-        warehouseID: form.get('warehouseID'),
-        materialTypeID: material?.materialTypeID,
-        materialID: material?.materialID,
+        warehouseID: String(form.get('warehouseID')),
+        materialTypeID: material.materialTypeID,
+        materialID: material.materialID,
         requestID: zoneRequestID.current,
       })
       zoneRequestID.current = crypto.randomUUID()
@@ -83,9 +115,119 @@ export function InventoryWorkspace() {
       setBusy(false)
     }
   }
+  async function updateMinimumStock(materialID: string, value: number) {
+    if (!Number.isFinite(value) || value <= 0) {
+      setError('เกณฑ์สต็อกขั้นต่ำต้องมากกว่า 0')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await operationsApi.updateMinimumStock(materialID, value)
+      await materials.refresh()
+      notify('บันทึกเกณฑ์สต็อกขั้นต่ำแล้ว')
+    } catch (cause) {
+      setError(errorText(cause))
+    } finally {
+      setBusy(false)
+    }
+  }
   if (warehouses.loading || zones.loading || materials.loading) return <Loading />
+
+  if (materialSearch || workspace?.role === 'warehouse') {
+    return (
+      <div className="operations-workspace inventory-page inventory-reference-page">
+        <PageIntro
+          eyebrow={roles[workspace!.role].english}
+          title="ค้นหาข้อมูลวัสดุ"
+          description="ค้นหาและตรวจสอบข้อมูลวัสดุ ยอดคงเหลือ เกรด และเกณฑ์ขั้นต่ำ"
+        >
+          <RefreshButton
+            onClick={() => void refresh()}
+            busy={warehouses.refreshing || zones.refreshing || materials.refreshing}
+          />
+        </PageIntro>
+
+        <ErrorBox message={error || warehouses.error || zones.error || materials.error} />
+
+        <section className="panel inventory-reference-filter-panel">
+          <div className="inventory-reference-toolbar">
+            <label className="input-with-icon inventory-reference-search">
+              <Search size={15} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="ค้นหาชื่อวัสดุหรือรหัส..."
+              />
+            </label>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="ประเภทวัสดุ">
+              <option value="all">ทุกประเภท</option>
+              {materialTypes.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+            <select value={gradeFilter} onChange={(event) => setGradeFilter(event.target.value)} aria-label="เกรดวัสดุ">
+              <option value="all">ทุกเกรด</option>
+              <option value="A">เกรด A</option>
+              <option value="B">เกรด B</option>
+              <option value="C">เกรด C</option>
+            </select>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="สถานะวัสดุ">
+              <option value="all">ทุกสถานะ</option>
+              <option value="normal">ปกติ</option>
+              <option value="below">ต่ำกว่าเกณฑ์</option>
+              <option value="unset">ยังไม่กำหนดขั้นต่ำ</option>
+            </select>
+          </div>
+        </section>
+
+        <section className="panel inventory-reference-table-panel">
+          {!visibleMaterials.length ? (
+            <Empty title="ไม่พบรายการวัสดุที่ค้นหา" message="ลองเปลี่ยนคำค้นหาหรือตัวกรอง" />
+          ) : (
+            <div className="table-scroll">
+              <table className="inventory-reference-table">
+                <thead>
+                  <tr>
+                    <th>รหัสวัสดุ</th>
+                    <th>ชื่อวัสดุ</th>
+                    <th>ประเภท</th>
+                    <th>เกรด</th>
+                    <th className="numeric">ยอดคงเหลือ</th>
+                    <th className="numeric">เกณฑ์ขั้นต่ำ</th>
+                    <th>สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleMaterials.map((material) => (
+                    <tr key={`${material.materialID}-${material.grade || 'none'}`}>
+                      <td><strong>{material.materialID}</strong></td>
+                      <td><strong>{material.materialName}</strong></td>
+                      <td>{material.materialType?.typeName || '—'}</td>
+                      <td>{material.grade ? `เกรด ${material.grade}` : '—'}</td>
+                      <td className="numeric"><strong>{number(material.currentQuantity)} {material.unit}</strong></td>
+                      <td className="numeric">{material.minimumStockConfigured ? `${number(material.minStockLevel)} ${material.unit}` : '—'}</td>
+                      <td>
+                        {!material.minimumStockConfigured ? (
+                          <Status value="pending" label="ยังไม่กำหนดขั้นต่ำ" />
+                        ) : material.belowMin ? (
+                          <span className="stock-alert"><AlertTriangle size={14} /> ต่ำกว่าเกณฑ์</span>
+                        ) : (
+                          <Status value="available" label="ปกติ" />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+        <p className="inventory-reference-count">แสดง {visibleMaterials.length} รายการจากทั้งหมด {materials.data.length} รายการ</p>
+      </div>
+    )
+  }
+
   return (
-    <>
+    <div className="operations-workspace inventory-page">
       <PageIntro
         eyebrow={roles[workspace!.role].english}
         title="คลังวัสดุ"
@@ -103,12 +245,7 @@ export function InventoryWorkspace() {
             >
               <Plus size={16} /> เพิ่มคลัง
             </button>
-            <button
-              className="button primary"
-              onClick={() => setShowCreate(showCreate === 'zone' ? '' : 'zone')}
-            >
-              <Plus size={16} /> เพิ่มโซน
-            </button>
+            <Link className="button primary" to="/zones"><MapPinned size={16} /> จัดการโซน</Link>
           </>
         )}
       </PageIntro>
@@ -217,6 +354,14 @@ export function InventoryWorkspace() {
           </div>
         </div>
       </div>
+      <section className="panel material-inventory-panel">
+        <div className="panel-heading"><div><h2><Boxes size={17} /> ภาพรวมวัสดุ</h2><p>{visibleMaterials.length} รายการ · ต่ำกว่าเกณฑ์ {materials.data.filter((row) => row.belowMin).length}</p></div></div>
+        <div className="movement-filters inventory-filters">
+          <label className="input-with-icon"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหารหัส ชื่อ หรือประเภทวัสดุ" /></label>
+          <label className="check-filter"><input type="checkbox" checked={lowOnly} onChange={(event) => setLowOnly(event.target.checked)} /> แสดงเฉพาะต่ำกว่าเกณฑ์</label>
+        </div>
+        {!visibleMaterials.length ? <Empty title="ไม่พบวัสดุ" message="ลองเปลี่ยนคำค้นหาหรือตัวกรอง" /> : <div className="table-scroll"><table><thead><tr><th>วัสดุ</th><th>ประเภท / เกรด</th><th className="numeric">คงเหลือ</th><th className="numeric">เกณฑ์ขั้นต่ำ</th><th>สถานะ</th>{canManage && <th>กำหนดขั้นต่ำ</th>}</tr></thead><tbody>{visibleMaterials.map((material) => <tr key={material.materialID}><td><strong>{material.materialName}</strong><br /><small>{material.materialID}</small></td><td>{material.materialType?.typeName || '—'} · {material.grade || '—'}</td><td className="numeric"><strong>{number(material.currentQuantity)} {material.unit}</strong></td><td className="numeric">{material.minimumStockConfigured ? `${number(material.minStockLevel)} ${material.unit}` : 'ยังไม่กำหนด'}</td><td>{material.belowMin ? <span className="stock-alert"><AlertTriangle size={14} /> ต่ำกว่าเกณฑ์</span> : <Status value="available" label="เพียงพอ" />}</td>{canManage && <td><form className="minimum-stock-form" onSubmit={(event) => { event.preventDefault(); const value = Number(new FormData(event.currentTarget).get('minimum')); void updateMinimumStock(material.materialID, value) }}><input name="minimum" type="number" min="0.01" step="0.01" defaultValue={material.minimumStockConfigured ? material.minStockLevel : ''} aria-label={`เกณฑ์ขั้นต่ำ ${material.materialName}`} /><button className="button secondary compact" disabled={busy}>บันทึก</button></form></td>}</tr>)}</tbody></table></div>}
+      </section>
       {!grouped.length ? (
         <section className="panel">
           <Empty
@@ -227,9 +372,7 @@ export function InventoryWorkspace() {
       ) : (
         <div className="warehouse-grid">
           {grouped.map(({ warehouse, zones: rows }) => {
-            const percent = warehouse.totalCapacity
-              ? Math.min(100, (warehouse.currentQuantity / warehouse.totalCapacity) * 100)
-              : 0
+            const percent = capacityPercent(warehouse.currentQuantity, warehouse.totalCapacity)
             return (
               <section className="panel warehouse-card" key={warehouse.warehouseID}>
                 <div className="warehouse-card-head">
@@ -273,6 +416,6 @@ export function InventoryWorkspace() {
           })}
         </div>
       )}
-    </>
+    </div>
   )
 }
