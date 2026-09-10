@@ -76,8 +76,8 @@ func (h *Handler) CreateWarehouse(c *gin.Context) {
 	if request.MinStock < 0 {
 		fields["minStock"] = "ต้องไม่น้อยกว่า 0"
 	}
-	if !nonBlank(request.Unit) {
-		fields["unit"] = "กรุณาระบุหน่วย"
+	if !strings.EqualFold(strings.TrimSpace(request.Unit), "kg") {
+		fields["unit"] = "ระบบคลังรองรับเฉพาะหน่วย kg"
 	}
 	if len(fields) > 0 {
 		validationFailure(c, fields)
@@ -156,10 +156,10 @@ func (h *Handler) UpdateWarehouse(c *gin.Context) {
 		}
 	}
 	if request.Unit != nil {
-		if !nonBlank(*request.Unit) {
-			fields["unit"] = "ห้ามเป็นค่าว่าง"
+		if !strings.EqualFold(strings.TrimSpace(*request.Unit), "kg") {
+			fields["unit"] = "ระบบคลังรองรับเฉพาะหน่วย kg"
 		} else {
-			updates["unit"] = strings.TrimSpace(*request.Unit)
+			updates["unit"] = "kg"
 		}
 	}
 	if len(fields) > 0 {

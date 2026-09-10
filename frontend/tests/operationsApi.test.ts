@@ -13,6 +13,29 @@ function successfulFetch(data: unknown = {}) {
 }
 
 describe('scoped operations API', () => {
+  it('previews warehouse and zone IDs from the backend without allocating them', async () => {
+    const fetch = successfulFetch({ code: 'WH-0002' })
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(operationsApi.previewDocumentCode('warehouse')).resolves.toEqual({ code: 'WH-0002' })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/document-codes?kind=warehouse',
+      expect.objectContaining({ method: 'GET' }),
+    )
+
+    fetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, data: { code: 'WH-0001-ZN-0003' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    await expect(operationsApi.previewDocumentCode('zone', 'WH-0001')).resolves.toEqual({ code: 'WH-0001-ZN-0003' })
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/document-codes?kind=zone&warehouseID=WH-0001',
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
+
   it('encodes quality seller searches against the current endpoint', async () => {
     const fetch = successfulFetch([{ sellerCode: 'S001', name: 'สมชาย ใจดี' }])
     vi.stubGlobal('fetch', fetch)

@@ -23,6 +23,13 @@ export function ZoneWorkspace() {
   const [editing, setEditing] = useState<StorageZone | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [warehouseCode, setWarehouseCode] = useState('')
+  const [zoneCode, setZoneCode] = useState('')
+  const [warehouseCodeLoading, setWarehouseCodeLoading] = useState(false)
+  const [zoneCodeLoading, setZoneCodeLoading] = useState(false)
+  const [codeError, setCodeError] = useState('')
+  const [newZoneWarehouseID, setNewZoneWarehouseID] = useState('')
+  const [newZoneCapacity, setNewZoneCapacity] = useState('')
   const warehouseRequestID = useRef(crypto.randomUUID())
   const zoneRequestID = useRef(crypto.randomUUID())
 
@@ -45,21 +52,59 @@ export function ZoneWorkspace() {
       .filter(({ rows }) => rows.length),
     [filteredZones, warehouses.data],
   )
+  const selectedZoneWarehouse = warehouses.data.find((warehouse) => warehouse.warehouseID === newZoneWarehouseID)
+  const allocatedZoneCapacity = zones.data
+    .filter((zone) => zone.warehouseID === newZoneWarehouseID)
+    .reduce((sum, zone) => sum + Number(zone.capacity || 0), 0)
+  const remainingZoneCapacity = Math.max(0, Number(selectedZoneWarehouse?.totalCapacity || 0) - allocatedZoneCapacity)
+  const enteredZoneCapacity = Number(newZoneCapacity)
+  const zoneCapacityError = newZoneCapacity && Number.isFinite(enteredZoneCapacity) && enteredZoneCapacity > remainingZoneCapacity
+    ? `ความจุโซนต้องไม่เกิน ${number(remainingZoneCapacity)} kg ที่ยังแบ่งได้`
+    : ''
+
+  async function loadWarehouseCode() {
+    setWarehouseCode('')
+    setCodeError('')
+    setWarehouseCodeLoading(true)
+    try {
+      const result = await operationsApi.previewDocumentCode('warehouse')
+      setWarehouseCode(result.code)
+    } catch (cause) {
+      setCodeError(errorText(cause))
+    } finally {
+      setWarehouseCodeLoading(false)
+    }
+  }
+
+  async function loadZoneCode(warehouseID: string) {
+    setZoneCode('')
+    setCodeError('')
+    if (!warehouseID) return
+    setZoneCodeLoading(true)
+    try {
+      const result = await operationsApi.previewDocumentCode('zone', warehouseID)
+      setZoneCode(result.code)
+    } catch (cause) {
+      setCodeError(errorText(cause))
+    } finally {
+      setZoneCodeLoading(false)
+    }
+  }
 
   async function createWarehouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const target = event.currentTarget
     const form = new FormData(target)
     const totalCapacity = Number(form.get('totalCapacity'))
-    const unit = String(form.get('unit') || 'kg').trim()
-    if (!Number.isFinite(totalCapacity) || totalCapacity <= 0 || !unit) {
-      setError('กรุณาระบุความจุและหน่วยให้ถูกต้อง')
+    const unit = 'kg'
+    if (!Number.isFinite(totalCapacity) || totalCapacity <= 0) {
+      setError('กรุณาระบุความจุให้ถูกต้อง')
       return
     }
     setBusy(true)
     setError('')
     try {
-      await operationsApi.createWarehouse({
+      const created = await operationsApi.createWarehouse({
         totalCapacity,
         minStock: 0,
         unit,
@@ -68,8 +113,9 @@ export function ZoneWorkspace() {
       warehouseRequestID.current = crypto.randomUUID()
       target.reset()
       setShowWarehouseModal(false)
+      setWarehouseCode('')
       await refresh()
-      notify('เพิ่มคลังสินค้าแล้ว')
+      notify(`เพิ่มคลังสินค้า ${created.warehouseID} แล้ว`)
     } catch (cause) {
       setError(errorText(cause))
     } finally {
@@ -87,10 +133,14 @@ export function ZoneWorkspace() {
       setError('กรุณาเลือกวัสดุและระบุความจุให้ถูกต้อง')
       return
     }
+    if (capacity > remainingZoneCapacity) {
+      setError(`ความจุโซนต้องไม่เกิน ${number(remainingZoneCapacity)} kg ที่ยังแบ่งได้`)
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      await operationsApi.createZone({
+      const created = await operationsApi.createZone({
         zoneName: String(form.get('zoneName')).trim(),
         capacity,
         supportedGrade: String(form.get('grade')),
@@ -103,8 +153,10 @@ export function ZoneWorkspace() {
       zoneRequestID.current = crypto.randomUUID()
       target.reset()
       setShowZoneModal(false)
+      setZoneCode('')
+      setNewZoneCapacity('')
       await refresh()
-      notify('เพิ่มโซนจัดเก็บแล้ว')
+      notify(`เพิ่มโซนจัดเก็บ ${created.zoneID} แล้ว`)
     } catch (cause) {
       setError(errorText(cause))
     } finally {
@@ -170,10 +222,10 @@ export function ZoneWorkspace() {
         description="ตรวจสอบพื้นที่ว่าง จัดการคลังสินค้า และเพิ่มโซนจัดเก็บจำแนกตามเกรดและประเภทวัสดุ"
       >
         <RefreshButton onClick={() => void refresh()} busy={warehouses.refreshing || zones.refreshing || materials.refreshing} />
-        <button className="button secondary" onClick={() => { setShowWarehouseModal(true); setEditing(null); setError('') }}>
+        <button className="button secondary" onClick={() => { setShowWarehouseModal(true); setEditing(null); setError(''); void loadWarehouseCode() }}>
           <WarehouseIcon size={16} /> เพิ่มคลังสินค้า
         </button>
-        <button className="button primary" onClick={() => { setShowZoneModal(true); setEditing(null); setError('') }}>
+        <button className="button primary" onClick={() => { const firstWarehouseID = warehouses.data[0]?.warehouseID || ''; setNewZoneWarehouseID(firstWarehouseID); setNewZoneCapacity(''); setShowZoneModal(true); setEditing(null); setError(''); void loadZoneCode(firstWarehouseID) }}>
           <Plus size={16} /> เพิ่มโซนจัดเก็บ
         </button>
       </PageIntro>
@@ -244,9 +296,14 @@ export function ZoneWorkspace() {
       {showWarehouseModal && (
         <Modal title="เพิ่มคลังสินค้าใหม่" onClose={() => setShowWarehouseModal(false)} busy={busy}>
           <form className="modal-body zone-reference-modal-form" onSubmit={createWarehouse}>
-            <p>ระบุความจุและหน่วย ระบบจะสร้างรหัสคลังสินค้าตาม backend เดิมของระบบ</p>
+            <p>ระบุความจุและเลือกหน่วยมาตรฐาน ระบบจะแสดงรหัสคลังถัดไปจาก backend ให้ดูก่อนบันทึก</p>
+            <div className="document-code-preview">
+              <span>รหัสคลังสินค้าที่จะสร้าง</span>
+              <strong>{warehouseCodeLoading ? 'กำลังอ่านรหัส…' : warehouseCode || '—'}</strong>
+              {codeError && <button type="button" className="text-button" onClick={() => void loadWarehouseCode()}>โหลดรหัสใหม่</button>}
+            </div>
             <label className="field">ความจุรวมของคลัง<input name="totalCapacity" type="number" min="0.01" step="0.01" placeholder="เช่น 5000" required /></label>
-            <label className="field">หน่วย<input name="unit" defaultValue="kg" required /></label>
+            <label className="field">หน่วยมาตรฐาน<input name="unit" value="kg" readOnly aria-readonly="true" /></label>
             <div className="modal-actions">
               <button type="button" className="button secondary" onClick={() => setShowWarehouseModal(false)}>ยกเลิก</button>
               <button className="button primary" disabled={busy}>บันทึกคลังสินค้า</button>
@@ -258,17 +315,28 @@ export function ZoneWorkspace() {
       {showZoneModal && (
         <Modal title="เพิ่มโซนจัดเก็บใหม่" onClose={() => setShowZoneModal(false)} busy={busy} wide>
           <form className="modal-body zone-reference-modal-form" onSubmit={createZone}>
-            <p>สร้างโซนใหม่ พร้อมกำหนดสังกัดคลัง เกรดวัสดุ ประเภท และความจุสูงสุด</p>
+            <p>สร้างโซนใหม่ พร้อมดูรหัสโซนที่จะสร้าง เลือกคลัง เกรด วัสดุ และความจุสูงสุด</p>
+            <div className="document-code-preview">
+              <span>รหัสโซนจัดเก็บที่จะสร้าง</span>
+              <strong>{zoneCodeLoading ? 'กำลังอ่านรหัส…' : zoneCode || '—'}</strong>
+              {codeError && <button type="button" className="text-button" onClick={() => void loadZoneCode(newZoneWarehouseID)}>โหลดรหัสใหม่</button>}
+            </div>
             <div className="form-grid">
-              <label className="field">สังกัดคลังสินค้า<select name="warehouseID" required>{warehouses.data.map((warehouse) => <option key={warehouse.warehouseID} value={warehouse.warehouseID}>{warehouse.warehouseID}</option>)}</select></label>
+              <label className="field">สังกัดคลังสินค้า<select name="warehouseID" value={newZoneWarehouseID} onChange={(event) => { const warehouseID = event.target.value; setNewZoneWarehouseID(warehouseID); setNewZoneCapacity(''); void loadZoneCode(warehouseID) }} required>{warehouses.data.map((warehouse) => <option key={warehouse.warehouseID} value={warehouse.warehouseID}>{warehouse.warehouseID} · {warehouse.unit}</option>)}</select></label>
+              <label className="field">หน่วยความจุ<input value="kg" readOnly /></label>
               <label className="field">ชื่อโซนจัดเก็บ<input name="zoneName" placeholder="เช่น โซน A3 (เกรด A)" required /></label>
               <label className="field">เกรดวัสดุที่รองรับ<select name="grade" defaultValue="A"><option>A</option><option>B</option><option>C</option></select></label>
-              <label className="field">วัสดุประจำโซน<select name="materialID" required>{materials.data.map((material) => <option key={material.materialID} value={material.materialID}>{material.materialID} · {material.materialName} ({material.unit})</option>)}</select></label>
-              <label className="field span-2">ความจุสูงสุด (กก.)<input name="capacity" type="number" min="0.01" step="0.01" placeholder="เช่น 5000" required /></label>
+              <label className="field span-2">วัสดุประจำโซน<select name="materialID" required>{materials.data.map((material) => <option key={material.materialID} value={material.materialID} disabled={material.unit !== 'kg'}>{material.materialID} · {material.materialName} ({material.unit}){material.unit !== 'kg' ? ' — ระบบคลังรองรับเฉพาะ kg' : ''}</option>)}</select></label>
+              <div className="zone-capacity-summary span-2">
+                <span>ความจุคลังทั้งหมด {number(selectedZoneWarehouse?.totalCapacity || 0)} kg</span>
+                <span>แบ่งให้โซนแล้ว {number(allocatedZoneCapacity)} kg</span>
+                <strong>ยังแบ่งได้ {number(remainingZoneCapacity)} kg</strong>
+              </div>
+              <label className={`field span-2 ${zoneCapacityError ? 'field-invalid' : ''}`}>ความจุสูงสุด (kg)<input name="capacity" type="number" min="0.01" max={remainingZoneCapacity || undefined} step="0.01" placeholder="เช่น 5000" value={newZoneCapacity} onChange={(event) => setNewZoneCapacity(event.target.value)} required />{zoneCapacityError && <small className="field-warning">{zoneCapacityError}</small>}</label>
             </div>
             <div className="modal-actions">
               <button type="button" className="button secondary" onClick={() => setShowZoneModal(false)}>ยกเลิก</button>
-              <button className="button primary" disabled={busy}>บันทึกโซนจัดเก็บ</button>
+              <button className="button primary" disabled={busy || Boolean(zoneCapacityError) || remainingZoneCapacity <= 0}>บันทึกโซนจัดเก็บ</button>
             </div>
           </form>
         </Modal>

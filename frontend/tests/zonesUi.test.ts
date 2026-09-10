@@ -18,5 +18,8 @@ describe('zone workspace UI parity with UI-design-SA', () => {
     expect(source).toContain('ใช้ไปแล้ว')
     expect(source).toContain('ว่างคงเหลือ')
     expect(source).toContain('แก้ไขโซน')
+    expect(source).toContain('ยังแบ่งได้')
+    expect(source).toContain('ความจุโซนต้องไม่เกิน')
+    expect(source).toContain('max={remainingZoneCapacity || undefined}')
   })
 })

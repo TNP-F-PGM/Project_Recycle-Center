@@ -1,14 +1,19 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, FileText, Printer, Search } from 'lucide-react'
-import { Empty, ErrorBox, Loading, PageIntro, RefreshButton, Status } from '../../components/ui'
+import { Empty, ErrorBox, Loading, PageIntro, Status } from '../../components/ui'
 import { roles } from '../../context/AppContext'
 import { useApiList } from '../../hooks/useApiList'
-import type { QualityAssessment } from '../../types'
+import type { AssessmentBatch, QualityAssessment } from '../../types'
 import { dateLabel, number, today } from '../../utils/format'
 import { cleanlinessLabel, groupAssessmentsByBatch, localDateKey, qualityResultLabel } from '../../utils/operations'
 
 export function QualityHistory({ embedded = false }: { embedded?: boolean }) {
   const assessments = useApiList<QualityAssessment>('/quality-assessments')
+  const batches = useApiList<AssessmentBatch>('/assessment-batches?status=completed')
+  const completedBatchIDs = useMemo(
+    () => new Set(batches.data.filter((batch) => batch.status === 'completed').map((batch) => batch.assessmentBatchID)),
+    [batches.data],
+  )
   const [query, setQuery] = useState('')
   const [date, setDate] = useState(today())
   const [expanded, setExpanded] = useState('')
@@ -16,6 +21,7 @@ export function QualityHistory({ embedded = false }: { embedded?: boolean }) {
   const groups = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('th')
     return groupAssessmentsByBatch(assessments.data).filter((group) => {
+      if (!completedBatchIDs.has(group.batchID)) return false
       if (!needle && localDateKey(group.assessedAt) !== date) return false
       if (!needle) return true
       return [group.batchID, group.sellerCode, group.employeeID, ...group.items.map((item) => item.material?.materialName || item.materialID)]
@@ -23,23 +29,21 @@ export function QualityHistory({ embedded = false }: { embedded?: boolean }) {
         .toLocaleLowerCase('th')
         .includes(needle)
     })
-  }, [assessments.data, date, query])
+  }, [assessments.data, completedBatchIDs, date, query])
 
   function print(groupID: string) {
     setPrintBatch(groupID)
     window.setTimeout(() => window.print(), 0)
   }
 
-  if (assessments.loading) return <Loading />
+  if (assessments.loading || batches.loading) return <Loading />
   return (
     <div className={`operations-workspace quality-history-page ${embedded ? 'quality-history-embedded' : ''}`}>
       {!embedded && (
-        <PageIntro eyebrow={roles.quality.english} title="ประวัติการประเมิน" description="ค้นหาใบประเมิน ตรวจผลแบบรายชุด และพิมพ์เอกสาร">
-          <RefreshButton onClick={() => void assessments.refresh()} busy={assessments.refreshing} />
-        </PageIntro>
+        <PageIntro eyebrow={roles.quality.english} title="ประวัติการประเมิน" description="ค้นหาใบประเมิน ตรวจผลแบบรายชุด และพิมพ์เอกสาร" />
       )}
-      {embedded && <div className="quality-history-inline-head"><div><strong>ประวัติการประเมินทั้งหมด</strong><span>ค้นหาและเปิดดูใบประเมินแบบรายชุด</span></div><RefreshButton onClick={() => void assessments.refresh()} busy={assessments.refreshing} /></div>}
-      <ErrorBox message={assessments.error} />
+      {embedded && <div className="quality-history-inline-head"><div><strong>ประวัติการประเมินทั้งหมด</strong><span>ค้นหาและเปิดดูใบประเมินแบบรายชุด</span></div></div>}
+      <ErrorBox message={assessments.error || batches.error} />
 
       <section className="panel quality-history-toolbar">
         <label className="field quality-history-search">ค้นหาเลขใบประเมิน
